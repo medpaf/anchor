@@ -69,14 +69,13 @@ This free version of Anchor is locked to **one phone per computer**. The first p
 **Computer**
 
 - **Linux:** GTK 4 and libadwaita 1.5 or newer (e.g. Ubuntu 24.04+, Fedora 40+, Arch), and Python 3.10+
-- **Windows:** Windows 10 or 11 (64-bit). Everything else comes with the installer.
+- **Windows:** Windows 10 or 11 (64-bit)
 - A USB cable that carries data, not just charge
 
 **Phone**
 
 - Android 10 or newer
 - USB debugging enabled
-- During setup only: no accounts signed in and a single user (no guest user, work profile, "Second space" or "Dual apps"). Android only lets you set a device owner on a phone without accounts; you remove them for a minute and add them back right after.
 
 ## Installation
 
@@ -117,6 +116,8 @@ To uninstall later, see [Removing Anchor from the computer](#removing-anchor-fro
 **3. Connect and set up.** Plug the phone in and open Anchor. Accept the "Allow USB debugging?" prompt on the phone and tick "Always allow from this computer". Click **Set up phone** — this installs the companion app, makes it device owner and pairs it with the computer.
 
 **4. Sign back into your accounts** on the phone. Setup is done.
+
+Android only lets you set a device owner on a phone without accounts so, because of that, during the initial setup, you need remove them for a few moments and add them back right after.
 
 There's a helper in the desktop itself that will guide you through these simple steps.
 
