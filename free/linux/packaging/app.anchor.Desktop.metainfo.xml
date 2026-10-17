@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- What App Center, GNOME Software and Discover show for Anchor. Installed by the .deb into
+     /usr/share/metainfo. Check it with: appstreamcli validate app.anchor.Desktop.metainfo.xml -->
+<component type="desktop-application">
+  <id>app.anchor.Desktop</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-only</project_license>
+
+  <name>Anchor</name>
+  <summary>Block distracting apps on your Android phone</summary>
+  <developer id="io.github.medpaf">
+    <name>Paulo Medeiros</name>
+  </developer>
+
+  <description>
+    <p>
+      Anchor is an app blocker for Android that helps you spend less time on your phone and is
+      impossible to bypass from the phone itself. You pick the apps that distract you on your
+      computer, and with one click they disappear from your phone. Only this computer can bring
+      them back, over a USB cable.
+    </p>
+    <ul>
+      <li>Hide any app in one click, without deleting its data</li>
+      <li>Schedules, such as YouTube hidden every night</li>
+      <li>A Never allow list that stops apps from being installed at all</li>
+      <li>No accounts, no tracking: everything stays on your devices</li>
+    </ul>
+    <p>Free version: one phone per computer.</p>
+  </description>
+
+  <launchable type="desktop-id">app.anchor.Desktop.desktop</launchable>
+  <icon type="stock">app.anchor.Desktop</icon>
+
+  <url type="homepage">https://github.com/medpaf/anchor</url>
+  <url type="bugtracker">https://github.com/medpaf/anchor/issues</url>
+  <url type="vcs-browser">https://github.com/medpaf/anchor</url>
+  <url type="donation">https://github.com/sponsors/medpaf</url>
+
+  <categories>
+    <category>Utility</category>
+  </categories>
+  <keywords>
+    <keyword>android</keyword>
+    <keyword>app blocker</keyword>
+    <keyword>focus</keyword>
+    <keyword>screen time</keyword>
+  </keywords>
+
+  <content_rating type="oars-1.1"/>
+
+  <releases>
+    <release version="1.0" date="2026-10-17"/>
+  </releases>
+</component>

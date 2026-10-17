@@ -1,0 +1,3 @@
+#!/bin/sh
+# Does nothing. Anchor runs it through pkexec only to learn whether the admin password was accepted.
+exit 0

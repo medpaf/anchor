@@ -1,0 +1,66 @@
+# Builds the Linux downloads (free/linux) on a fresh Ubuntu machine and publishes them on the "linux"
+# release, so the newest build is always at:
+#   https://github.com/medpaf/anchor/releases/download/linux/anchor-linux.deb
+#   https://github.com/medpaf/anchor/releases/download/linux/anchor-linux.tar.gz
+# Runs on every push that changes free/linux, or by hand (Actions → Linux build → Run workflow).
+
+name: Linux build
+
+on:
+  push:
+    branches: [main]
+    paths: ["free/linux/**", ".github/workflows/linux.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write  # to publish the release
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: free/linux
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install what the app and its tests need
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends python3-gi gir1.2-gtk-4.0 gir1.2-adw-1 openssl xvfb
+
+      - name: Tests
+        run: xvfb-run -a tests/run_tests.sh
+
+      - name: Record which commit this build is (for Menu → Check for updates…)
+        run: echo "$GITHUB_SHA" > desktop/build-commit
+
+      - name: Build the .deb and .tar.gz
+        run: packaging/build.sh
+
+      - name: Install the .deb and start Anchor once
+        run: |
+          sudo apt-get install -y ./dist/anchor-linux.deb
+          # Still running after 10 seconds (exit 124) means it started fine.
+          timeout 10 xvfb-run -a anchor || [ $? -eq 124 ]
+
+      - name: Check that Anchor's uninstall helper removes the package
+        run: |
+          sudo /usr/libexec/anchor-uninstall
+          if dpkg -s anchor >/dev/null 2>&1; then echo "anchor is still installed" >&2; exit 1; fi
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: anchor-linux
+          path: |
+            free/linux/dist/anchor-linux.deb
+            free/linux/dist/anchor-linux.tar.gz
+
+      - name: Publish on the "linux" release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view linux >/dev/null 2>&1; then gh release delete linux --yes --cleanup-tag; fi
+          gh release create linux dist/anchor-linux.deb dist/anchor-linux.tar.gz --target "$GITHUB_SHA" \
+            --title "Anchor for Linux" \
+            --notes "The free version of Anchor for Linux. Ubuntu, Debian, Mint, Pop!_OS: download anchor-linux.deb and run: sudo apt install ./anchor-linux.deb. Any other Linux: download anchor-linux.tar.gz, unpack it and run ./install.sh. Built from $GITHUB_SHA."

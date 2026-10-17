@@ -1,0 +1,56 @@
+# Builds the Windows installer (free/windows) on GitHub's Windows machines and publishes it on the
+# "windows" release, so the newest build is always at:
+#   https://github.com/medpaf/anchor/releases/download/windows/anchor-win.exe
+# Runs on every push that changes free/windows, or by hand (Actions → Windows build → Run workflow).
+
+name: Windows build
+
+on:
+  push:
+    branches: [main]
+    paths: ["free/windows/**", ".github/workflows/windows.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write  # to publish the release
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: free/windows
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install Inno Setup if it's missing
+        run: |
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) {
+            choco install innosetup -y --no-progress
+          }
+
+      - name: Record which commit this build is (for Menu → Check for updates…)
+        run: Set-Content -Path desktop/build-commit -Value $env:GITHUB_SHA -NoNewline -Encoding ascii
+
+      - name: Test and build
+        run: ./build.ps1
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: anchor-win
+          path: free/windows/dist/anchor-win.exe
+
+      - name: Publish on the "windows" release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view windows *> $null
+          if ($LASTEXITCODE -eq 0) { gh release delete windows --yes --cleanup-tag }
+          gh release create windows dist/anchor-win.exe --target $env:GITHUB_SHA `
+            --title "Anchor for Windows" `
+            --notes "The free version of Anchor for Windows 10 and 11. Download anchor-win.exe and run it. Built from $env:GITHUB_SHA."

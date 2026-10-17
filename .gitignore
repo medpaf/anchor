@@ -1,0 +1,21 @@
+# Signs the phone app. Keep it private and backed up: anyone with it can sign a replacement Anchor.
+**/android/anchor.jks
+**/android/build/
+__pycache__/
+*.pyc
+
+# The full version lives in its own private repo (anchor-master).
+/master/
+
+# Windows builds (free/windows/build.ps1)
+**/windows/.venv/
+**/windows/build/
+**/windows/dist/
+**/desktop/platform-tools/
+
+# Linux packages (free/linux/packaging/build.sh)
+/free/linux/build/
+/free/linux/dist/
+
+# Written by GitHub's builds (Menu → Check for updates…)
+**/desktop/build-commit

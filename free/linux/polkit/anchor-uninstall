@@ -1,0 +1,10 @@
+#!/bin/sh
+# Removes the system files install.sh added (the Release all password prompt text, and this helper).
+# Anchor runs it through pkexec from "Uninstall Anchor from this computer…". Files that belong to the
+# anchor-linux.deb package are left to apt.
+for f in /usr/share/polkit-1/actions/app.anchor.release.policy /usr/libexec/anchor-release-check /usr/libexec/anchor-uninstall; do
+  if command -v dpkg >/dev/null && dpkg -S "$f" >/dev/null 2>&1; then
+    continue
+  fi
+  rm -f "$f"
+done
