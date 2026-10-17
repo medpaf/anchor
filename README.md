@@ -120,7 +120,7 @@ To uninstall later, see [Removing Anchor from the computer](#removing-anchor-fro
 
 There's a helper in the desktop itself that will guide you through these simple steps.
 
-<img width="569" height="766" alt="image" src="https://github.com/user-attachments/assets/b7029195-36de-430a-be0e-147897893787" />
+<img src="docs/screenshots/setup.png" width="600" alt="Anchor's setup page, with the steps to set up the phone">
 
 ## How to use
 
@@ -131,11 +131,10 @@ Plug in the phone and open Anchor. Find an app under "Your apps" (there's a sear
 Apps on your **Never allow** list show up in the phone's settings as "Blocked by Anchor": these are
 Anchor's tiny placeholders that stop them from being installed. Anchored apps are hidden completely.
 
-<img width="300" alt="Never-allowed apps in the phone's settings, shown as Blocked by Anchor" src="https://github.com/user-attachments/assets/2bd33e4b-eee9-4cb5-98d4-89cd650dfc58" />
 
 You can unplug the phone whenever you want â€” everything stays blocked. The phone app can never release anything.
 
-<img width="724" height="1001" alt="image" src="https://github.com/user-attachments/assets/7a13f2b5-4820-4db2-a7ef-931edcd85c9a" />
+<img src="docs/screenshots/main.png" width="600" alt="Anchor's main window: three apps anchored, and the rest of the phone's apps">
 
 ### Never allow
 
@@ -143,7 +142,7 @@ The Never allow card is under the status bar. To add an app, click "Add an appâ€
 
 An app on this list cannot be installed on the phone: trying to install it from the Play Store (or anywhere else) is refused.
 
-<img width="724" height="1001" alt="image" src="https://github.com/user-attachments/assets/6d46ae51-fe24-4a21-89d1-6fe6b91623b7" />
+<img src="docs/screenshots/never-allow.png" width="600" alt="The Never allow list, with apps that can't be installed">
 
 ### Schedules
 
@@ -151,13 +150,13 @@ Click the clock button on an app's row, then "Add a time". Choose the days and t
 
 Apps with a schedule show a coloured clock icon, and while a window is active the row says something like "Hidden by its schedule until 07:00". A scheduled app is hidden during its windows whether or not you've anchored anything. To end one early, tap the clock icon and remove the schedule or untoggle it.
 
-<img width="724" height="456" alt="image" src="https://github.com/user-attachments/assets/91a086ad-6dca-4633-a8fe-d4873d44291d" />
+<img src="docs/screenshots/schedule.png" width="600" alt="YouTube's schedule: hidden every day from 22:30 to 07:00">
 
 ### App details and permissions
 
 Click an app's row to open its details: version, install and update dates, whether it's a system app, and its permissions, each with a switch. The switches change the permission on the phone right away, but they're greyed out while the app is anchored or on its schedule.
 
-<img width="724" height="771" alt="image" src="https://github.com/user-attachments/assets/6a366945-285a-42d9-901d-6aa77096c489" />
+<img src="docs/screenshots/details.png" width="600" alt="An app's details, with switches for its permissions">
 
 Apps that didn't come with the phone have an **Uninstall** button. If the app is on the Never allow list, it can't be installed again afterwards.
 
