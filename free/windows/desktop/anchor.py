@@ -1307,12 +1307,22 @@ class AnchorWindow(QMainWindow):
             d.uninstall = w.button("Uninstall", "pill-danger", f"Uninstall {label} from your phone",
                                    lambda: (d.close_overlay(), self.on_uninstall_app(app)))
             d.body.addWidget(d.uninstall, 0, Qt.AlignHCenter)
+        # Until the phone answers: a spinner instead of half-empty cards; then everything at once.
+        d.loading = QWidget()
+        lay = QVBoxLayout(d.loading)
+        lay.setContentsMargins(0, 48, 0, 0)
+        lay.setSpacing(12)
+        d.spinner = w.Spinner(36)
+        lay.addWidget(d.spinner, 0, Qt.AlignHCenter)
+        d.loading_text = w.label("Loading…", "dim", wrap=True, align=Qt.AlignCenter)
+        lay.addWidget(d.loading_text)
+        d.body.addWidget(d.loading)
+        for part in (d.about, d.perms, d.uninstall):
+            if part:
+                part.hide()
         d.body.addStretch(1)
-        loading = w.Row("Loading…")
-        loading.add_suffix(w.Spinner(20))
-        d.about.add(loading)
         d.app, d.perm_rows, d.perm_empty = app, {}, None
-        d.page_widgets = [loading]
+        d.page_widgets = []
         d.closed.connect(lambda: self.details is d and setattr(self, "details", None))
         d.present(self)
         self.details = d
@@ -1325,8 +1335,8 @@ class AnchorWindow(QMainWindow):
 
         def fail(e):
             if self.details is d:
-                loading.set_title("Couldn't read this app's details")
-                loading.set_subtitle(str(e))
+                d.spinner.hide()
+                d.loading_text.setText(f"Couldn't read this app's details\n{e}")
 
         in_background(lambda: agent.app_info(pkg), done, fail)
 
@@ -1348,6 +1358,10 @@ class AnchorWindow(QMainWindow):
         for x in d.page_widgets:
             d.about.remove(x)
         d.page_widgets = []
+        d.loading.hide()
+        for part in (d.about, d.perms, d.uninstall):
+            if part:
+                part.show()
 
         def date(ms):
             return f"{datetime.fromtimestamp(ms / 1000):%d %b %Y}".lstrip("0") if ms else "—"

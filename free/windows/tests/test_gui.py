@@ -496,6 +496,18 @@ class GuiTest(unittest.TestCase):
         self.pump(lambda: INSTAGRAM not in self.win.rows, what="uninstall")
         self.assertNotIn(INSTAGRAM, phone.apps)
 
+    def test_details_show_a_spinner_until_they_load(self):
+        self.open(self.ready_phone())
+        self.wait_page("main")
+        self.win.open_app_details({"pkg": INSTAGRAM, "label": "Instagram"})
+        d = self.win.details
+        self.assertTrue(not d.loading.isHidden(), "a spinner first")
+        self.assertFalse(not d.about.isHidden(), "no half-empty cards meanwhile")
+        self.pump(lambda: d.page_widgets, what="details")
+        self.assertFalse(not d.loading.isHidden())
+        self.assertTrue(not d.about.isHidden() and not d.perms.isHidden() and not d.uninstall.isHidden(),
+                        "then everything at once")
+
     def test_uninstall_needs_confirmation_in_the_list(self):
         phone = self.ready_phone()
         self.open(phone)

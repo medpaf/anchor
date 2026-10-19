@@ -1425,6 +1425,7 @@ class AnchorWindow(Adw.ApplicationWindow):
         page.add(perms)
         d.uninstall = None
         row = self.rows.get(pkg)
+        bottom = None
         if row and row.uninstall_button:  # apps you installed yourself, like the Uninstall in the list
             d.uninstall = Gtk.Button(label="Uninstall", halign=Gtk.Align.CENTER,
                                      tooltip_text=f"Uninstall {label} from your phone")
@@ -1434,11 +1435,22 @@ class AnchorWindow(Adw.ApplicationWindow):
             bottom = Adw.PreferencesGroup()
             bottom.add(d.uninstall)
             page.add(bottom)
-        loading = Adw.ActionRow(title="Loading…")
-        loading.add_suffix(Gtk.Spinner(spinning=True))
-        about.add(loading)
+        # Until the phone answers: a spinner instead of half-empty cards; then everything at once.
+        d.loading = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12, margin_top=48)
+        d.spinner = Gtk.Spinner(spinning=True, width_request=36, height_request=36, halign=Gtk.Align.CENTER)
+        d.loading.append(d.spinner)
+        d.loading_text = Gtk.Label(label="Loading…", wrap=True, justify=Gtk.Justification.CENTER)
+        d.loading_text.add_css_class("dim-label")
+        d.loading.append(d.loading_text)
+        loading_group = Adw.PreferencesGroup()
+        loading_group.add(d.loading)
+        page.add(loading_group)
+        d.parts = [g for g in (about, perms, bottom) if g]
+        for part in d.parts:
+            part.set_visible(False)
+        d.loading_group = loading_group
         d.app, d.about, d.perms, d.perm_rows = app, about, perms, {}
-        d.page_widgets = [loading]
+        d.page_widgets = []
         d.present(self)
         self.details = d
 
@@ -1450,8 +1462,8 @@ class AnchorWindow(Adw.ApplicationWindow):
 
         def fail(e):
             if self.details is d:
-                loading.set_title("Couldn't read this app's details")
-                loading.set_subtitle(str(e))
+                d.spinner.set_visible(False)
+                d.loading_text.set_label(f"Couldn't read this app's details\n{e}")
 
         in_background(lambda: agent.app_info(pkg), done, fail)
 
@@ -1473,6 +1485,9 @@ class AnchorWindow(Adw.ApplicationWindow):
         for w in d.page_widgets:
             d.about.remove(w)
         d.page_widgets = []
+        d.loading_group.set_visible(False)
+        for part in d.parts:
+            part.set_visible(True)
 
         def date(ms):
             return datetime.fromtimestamp(ms / 1000).strftime("%-d %b %Y") if ms else "—"
