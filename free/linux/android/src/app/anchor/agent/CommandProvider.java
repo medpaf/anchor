@@ -49,7 +49,7 @@ import java.util.zip.ZipOutputStream;
  * every command that changes anything must carry the computer's key.
  */
 public class CommandProvider extends ContentProvider {
-    static final int VERSION = 37;
+    static final int VERSION = 38;
     private static final int SHELL_UID = 2000;
     private static final int ICON_PX = 96;
 
@@ -180,6 +180,12 @@ public class CommandProvider extends ContentProvider {
                 requireAuth(c, token);
                 PrivateDns.lock(c, in.isNull("host") ? null : in.getString("host"));
                 return status(c, token);
+            case "factory_reset_lock":
+                // Pro: {"locked": true} greys out "Erase all data" in the phone's Settings. Recovery mode
+                // (the phone's buttons at start-up) can't be blocked by any app and still works.
+                requireAuth(c, token);
+                Core.lockFactoryReset(c, in.getBoolean("locked"));
+                return status(c, token);
             case "release":
                 requireAuth(c, token);
                 Core.release(c);
@@ -216,6 +222,7 @@ public class CommandProvider extends ContentProvider {
                 .put("install_missing", new JSONArray(InstallBlocks.missing(c)))
                 .put("permissions_removed", new JSONObject(Permissions.counts(c)))
                 .put("private_dns", PrivateDns.status(c))
+                .put("factory_reset_locked", Core.factoryResetLocked(c))
                 .put("edition", Edition.get(c))
                 .put("exact_alarms", Core.canWakeExactly(c))
                 .put("version", VERSION)

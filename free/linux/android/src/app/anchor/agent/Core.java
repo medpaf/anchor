@@ -487,6 +487,17 @@ final class Core {
         return mode(c, now) != null || anyEnabled(schedules(c)) || !InstallBlocks.names(c).isEmpty();
     }
 
+    /** Pro: blocks (or allows again) factory reset from the phone's Settings. */
+    static void lockFactoryReset(Context c, boolean lock) {
+        if (lock) dpm(c).addUserRestriction(admin(c), UserManager.DISALLOW_FACTORY_RESET);
+        else dpm(c).clearUserRestriction(admin(c), UserManager.DISALLOW_FACTORY_RESET);
+    }
+
+    static boolean factoryResetLocked(Context c) {
+        UserManager um = c.getSystemService(UserManager.class);
+        return um != null && um.hasUserRestriction(UserManager.DISALLOW_FACTORY_RESET);
+    }
+
     /** Lifts every block and gives up device ownership, so Anchor can be uninstalled. */
     static void release(Context c) {
         prefs(c).edit().putString(KEY_SCHEDULES, "[]").putString(KEY_PAUSED, "{}").commit();
@@ -495,6 +506,10 @@ final class Core {
         apply(c);
         lockClock(c, false);
         PrivateDns.release(c);
+        try {
+            lockFactoryReset(c, false);
+        } catch (RuntimeException ignored) {
+        }
         unpair(c);
         dpm(c).clearDeviceOwnerApp(c.getPackageName());
     }
