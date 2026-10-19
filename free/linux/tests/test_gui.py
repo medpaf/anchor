@@ -120,9 +120,13 @@ class GuiTest(unittest.TestCase):
         return FakePhone(**kw).ready(self.token)
 
     def toggle(self, pkg, on=True):
-        """Clicks the app's Anchor (on) or Release (off) button if it isn't in that state already."""
+        """Clicks the app's Anchor (on) or Release (off) button if it isn't in that state already, and says
+        yes when an app that came with the phone asks first."""
         if (pkg in self.win.selected) != on:
+            asked = len(self.dialogs)
             self.win.rows[pkg].anchor_button.emit("clicked")
+            if len(self.dialogs) > asked and self.dialogs[-1].get_heading().startswith("Anchor "):
+                self.dialogs[-1].emit("response", "anchor")
 
     def wait_synced(self):
         self.pump(lambda: self.win.sync_source is None and not self.win.working, what="selection sync")
@@ -413,7 +417,8 @@ class GuiTest(unittest.TestCase):
     def test_uninstall_button_only_on_apps_that_can_be_uninstalled(self):
         self.open(self.ready_phone())
         self.wait_page("main")
-        self.assertIsNone(self.win.rows[YOUTUBE].uninstall_button, "preinstalled system app")
+        self.assertIsNone(self.win.rows[DIALER].uninstall_button, "the phone needs it")
+        self.assertIsNotNone(self.win.rows[YOUTUBE].uninstall_button, "came with the phone, but can go")
         self.assertIsNotNone(self.win.rows[INSTAGRAM].uninstall_button)
 
     def test_uninstall_an_app(self):
@@ -469,8 +474,8 @@ class GuiTest(unittest.TestCase):
         phone = self.ready_phone()
         self.open(phone)
         self.wait_page("main")
-        self.win.open_app_details({"pkg": YOUTUBE, "label": "YouTube"})
-        self.assertIsNone(self.win.details.uninstall, "not for apps that came with the phone")
+        self.win.open_app_details({"pkg": DIALER, "label": "Phone"})
+        self.assertIsNone(self.win.details.uninstall, "not for apps the phone needs")
         self.win.open_app_details({"pkg": INSTAGRAM, "label": "Instagram"})
         self.win.details.uninstall.emit("clicked")
         self.assertEqual(self.dialogs[-1].get_heading(), "Uninstall Instagram?")
@@ -504,6 +509,65 @@ class GuiTest(unittest.TestCase):
         self.wait_page("main")
         self.win.save_key_pdf(os.path.join(self.tmp.name, "no-such-folder", "key.pdf"))
         self.assertEqual(self.errors[-1][0], "Couldn't save the backup key")
+
+    def test_uninstall_a_system_app_moves_it_to_removed(self):
+        phone = self.ready_phone()
+        self.open(phone)
+        self.wait_page("main")
+        self.assertFalse(self.win.removed_title.section.get_visible(), "no section while nothing is removed")
+        self.win.rows[YOUTUBE].uninstall_button.emit("clicked")
+        self.assertIn("came with your phone", self.dialogs[-1].get_body())
+        self.dialogs[-1].emit("response", "uninstall")
+        self.pump(lambda: YOUTUBE not in self.win.rows and self.win.removed_rows, what="removed")
+        self.assertEqual(phone.removed, {YOUTUBE: "YouTube"})
+        self.assertTrue(self.win.removed_title.section.get_visible())
+        self.assertEqual([r.pkg for r in self.win.removed_rows], [YOUTUBE])
+
+    def test_restore_brings_a_system_app_back(self):
+        phone = self.ready_phone()
+        phone.removed[YOUTUBE] = phone.apps.pop(YOUTUBE)
+        self.open(phone)
+        self.wait_page("main")
+        self.pump(lambda: self.win.removed_rows, what="removed section")
+        row = self.win.removed_rows[0]
+        row.restore.emit("clicked")
+        self.pump(lambda: YOUTUBE in self.win.rows and not self.win.removed_title.section.get_visible(), what="restored")
+        self.assertIn(YOUTUBE, phone.apps)
+        self.assertIn("YouTube is back on your phone", self.toasts)
+
+    def test_anchoring_a_system_app_asks_first(self):
+        phone = self.ready_phone()
+        self.open(phone)
+        self.wait_page("main")
+        self.win.on_anchor_clicked(YOUTUBE)
+        self.assertEqual(self.dialogs[-1].get_heading(), "Anchor YouTube?")
+        self.assertIn("came with your phone", self.dialogs[-1].get_body())
+        self.dialogs[-1].emit("response", "cancel")
+        self.pump(lambda: False, timeout=0.5, fail=False)
+        self.assertNotIn(YOUTUBE, phone.blocked, "cancelled: nothing hidden")
+        self.win.on_anchor_clicked(YOUTUBE)
+        self.dialogs[-1].emit("response", "anchor")
+        self.pump(lambda: YOUTUBE in phone.blocked and not self.win.working, what="anchored")
+
+    def test_anchoring_your_own_app_doesnt_ask(self):
+        phone = self.ready_phone()
+        self.open(phone)
+        self.wait_page("main")
+        before = len(self.dialogs)
+        self.win.on_anchor_clicked(INSTAGRAM)
+        self.pump(lambda: INSTAGRAM in phone.blocked and not self.win.working, what="anchored")
+        self.assertEqual(len(self.dialogs), before)
+
+    def test_sections_are_in_order(self):
+        self.open(self.ready_phone())
+        self.wait_page("main")
+        box = self.win.picked_title.section.get_parent()
+        order, child = [], box.get_first_child()
+        while child:
+            order.append(child)
+            child = child.get_next_sibling()
+        sections = [self.win.picked_title.section, self.win.removed_title.section, self.win.other_title.section]
+        self.assertEqual([order.index(s) for s in sections], sorted(order.index(s) for s in sections))
 
     def test_uninstall_needs_confirmation_in_the_list(self):
         phone = self.ready_phone()

@@ -15,7 +15,7 @@ from pathlib import Path
 AGENT_PKG = "app.anchor.agent"
 AGENT_ADMIN = f"{AGENT_PKG}/.AdminReceiver"
 AGENT_URI = "content://app.anchor.agent.cmd"
-AGENT_VERSION = 38  # must match CommandProvider.VERSION in the bundled APK
+AGENT_VERSION = 39  # must match CommandProvider.VERSION in the bundled APK
 EDITION = "free"  # the phone app is the same for free and Pro; it shows this edition's name
 
 
@@ -286,6 +286,10 @@ class Agent:
     def uninstall_app(self, token, package):
         """Uninstalls an app the user picked (not system apps). Its data on the phone is deleted."""
         return self.call("uninstall", token=token, pkg=package)
+
+    def restore_system_app(self, token, package):
+        """Brings back an app that came with the phone and was uninstalled (only the computer can)."""
+        return self.call("restore_system_app", token=token, pkg=package)
 
     def uninstall_blocked(self, token, package):
         """Removes a never-allowed app that got installed (only when the user asks)."""
