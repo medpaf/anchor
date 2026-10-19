@@ -271,6 +271,27 @@ final class Core {
         prefs(c).edit().putString(KEY_SCHEDULES, json.toString()).commit();
     }
 
+    /**
+     * Adds a schedule from the phone itself. Only adding is possible here: it can only hide an app
+     * more. Changing or removing a schedule, which would bring an app back, is up to the computer.
+     */
+    static void addSchedule(Context c, String pkg, String name, int[] days, String start, String end)
+            throws JSONException {
+        JSONObject o = new JSONObject();
+        o.put("id", java.util.UUID.randomUUID().toString().replace("-", "").substring(0, 8));
+        o.put("name", name);
+        o.put("enabled", true);
+        JSONArray d = new JSONArray();
+        for (int day : days) d.put(day);
+        o.put("days", d);
+        o.put("start", start);
+        o.put("end", end);
+        o.put("packages", new JSONArray().put(pkg));
+        JSONArray all = schedulesJson(c);
+        all.put(o);
+        setSchedules(c, all);
+    }
+
     static List<Timing.Schedule> parseSchedules(JSONArray json) throws JSONException {
         List<Timing.Schedule> out = new ArrayList<>();
         for (int i = 0; i < json.length(); i++) {

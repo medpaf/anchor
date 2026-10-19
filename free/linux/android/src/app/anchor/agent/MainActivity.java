@@ -35,8 +35,9 @@ import java.util.TreeSet;
 
 /**
  * The phone's Anchor screen, laid out like the desktop app: a status card, a search box, and the
- * Never allow, Anchored apps and All other apps cards. Apps can be anchored from here (blocking is
- * always allowed) but never released: that only works from the paired computer.
+ * Never allow, Anchored apps and All other apps cards. Apps can be anchored, given a schedule or
+ * uninstalled from here (all of which only block more), but never released, and a schedule can't be
+ * changed or removed here: that only works from the paired computer.
  */
 public class MainActivity extends Activity {
     // Same palette as the desktop app.
@@ -247,7 +248,8 @@ public class MainActivity extends Activity {
         for (ResolveInfo ri : pm.queryIntentActivities(launcher, 0)) {
             String pkg = ri.activityInfo.packageName;
             if (pkg.equals(getPackageName()) || anchored.containsKey(pkg) || !seen.add(pkg)) continue;
-            others.add(new String[]{pkg, String.valueOf(ri.activityInfo.applicationInfo.loadLabel(pm)), pkg});
+            String note = schedulesFor(pkg).isEmpty() ? pkg : scheduleSummary(pkg);
+            others.add(new String[]{pkg, String.valueOf(ri.activityInfo.applicationInfo.loadLabel(pm)), note});
         }
         sortByName(others);
 
@@ -356,6 +358,25 @@ public class MainActivity extends Activity {
         }
         row.addView(text, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
         if (anchorButton) {
+            LinearLayout.LayoutParams ib = new LinearLayout.LayoutParams(dp(38), dp(38));
+            ib.leftMargin = dp(4);
+            if (canUninstall(pkg)) {
+                row.addView(iconButton("ic_delete", GREY, false, "Uninstall " + name, new Runnable() {
+                    @Override
+                    public void run() {
+                        confirmUninstall(pkg, name);
+                    }
+                }), ib);
+            }
+            boolean scheduled = !schedulesFor(pkg).isEmpty();
+            row.addView(iconButton("ic_alarm", scheduled ? VIOLET : GREY, scheduled, "Schedule for " + name, new Runnable() {
+                @Override
+                public void run() {
+                    showSchedules(pkg, name);
+                }
+            }), ib);
+        }
+        if (anchorButton) {
             Button anchor = new Button(this);
             anchor.setText("Anchor");
             anchor.setAllCaps(false);
@@ -388,16 +409,32 @@ public class MainActivity extends Activity {
 
     /** Asks first, in Anchor's own style: anchoring from the phone can't be undone from the phone. */
     private void confirmAnchor(final String pkg, final String name) {
+        confirm(pkg, "Anchor " + name + "?",
+                "It's hidden from this phone right away, and only your computer can bring it back.",
+                "Anchor", false, new Runnable() {
+                    @Override
+                    public void run() {
+                        anchorApp(pkg, name);
+                    }
+                });
+    }
+
+    private void confirmUninstall(final String pkg, final String name) {
+        confirm(pkg, "Uninstall " + name + "?", name + " and its data are removed from this phone.",
+                "Uninstall", true, new Runnable() {
+                    @Override
+                    public void run() {
+                        uninstallApp(pkg, name);
+                    }
+                });
+    }
+
+    /** A question about one app: its icon on a soft violet glow, a heading, a sentence, Cancel and an action. */
+    private void confirm(String pkg, String heading, String message, String action, boolean danger,
+                         final Runnable onAction) {
         final android.app.Dialog dialog = new android.app.Dialog(this);
-        dialog.requestWindowFeature(android.view.Window.FEATURE_NO_TITLE);
+        LinearLayout box = dialogBox();
 
-        LinearLayout box = new LinearLayout(this);
-        box.setOrientation(LinearLayout.VERTICAL);
-        box.setGravity(Gravity.CENTER_HORIZONTAL);
-        box.setPadding(dp(24), dp(26), dp(24), dp(20));
-        box.setBackground(cardWithBorder(0xFF1A1525, 0x298B5CF6, dp(26)));
-
-        // The app's icon on a soft violet glow, like the anchor emblem.
         android.widget.FrameLayout badge = new android.widget.FrameLayout(this);
         GradientDrawable glow = new GradientDrawable();
         glow.setShape(GradientDrawable.OVAL);
@@ -413,47 +450,261 @@ public class MainActivity extends Activity {
         badge.addView(icon, iconLp);
         box.addView(badge, new LinearLayout.LayoutParams(dp(84), dp(84)));
 
-        TextView heading = new TextView(this);
-        heading.setText("Anchor " + name + "?");
-        heading.setTextColor(TEXT);
-        heading.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
-        heading.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
-        heading.setGravity(Gravity.CENTER);
-        box.addView(heading, centered(dp(14)));
+        box.addView(dialogHeading(heading), centered(dp(14)));
+        box.addView(dialogText(message), centered(dp(8)));
 
-        TextView message = new TextView(this);
-        message.setText("It's hidden from this phone right away, and only your computer can bring it back.");
-        message.setTextColor(DIM);
-        message.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
-        message.setLineSpacing(0, 1.25f);
-        message.setGravity(Gravity.CENTER);
-        box.addView(message, centered(dp(8)));
-
-        LinearLayout buttons = new LinearLayout(this);
-        buttons.setOrientation(LinearLayout.HORIZONTAL);
         Button cancel = pillButton("Cancel", false);
+        Button go = danger ? dangerButton(action) : pillButton(action, true);
         cancel.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 dialog.dismiss();
             }
         });
-        Button anchor = pillButton("Anchor", true);
-        anchor.setOnClickListener(new View.OnClickListener() {
+        go.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 dialog.dismiss();
-                anchorApp(pkg, name);
+                onAction.run();
             }
         });
+        box.addView(twoButtons(cancel, go), fill(dp(22)));
+        showDialog(dialog, box);
+    }
+
+    /** An app's schedules: they can be looked at and added here, but changed or removed only on the computer. */
+    private void showSchedules(final String pkg, final String name) {
+        final android.app.Dialog dialog = new android.app.Dialog(this);
+        LinearLayout box = dialogBox();
+        box.addView(dialogHeading(name + " schedule"), centered(0));
+        box.addView(dialogText("Hide " + name + " at these times, even when nothing is anchored. This phone does it by "
+                + "itself. Once added, a time can only be changed or removed on your computer."), centered(dp(8)));
+
+        LinearLayout list = new LinearLayout(this);
+        list.setOrientation(LinearLayout.VERTICAL);
+        list.setBackground(cardWithBorder(CARD, 0x0FFFFFFF, dp(16)));
+        for (Timing.Schedule sch : schedulesFor(pkg)) {
+            list.addView(listRow("ic_alarm", daysText(sch), hoursText(sch) + (sch.enabled ? "" : " · Off")));
+            list.addView(divider());
+        }
+        View add = listRow("ic_add", "Add a time", "");
+        add.setClickable(true);
+        add.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                dialog.dismiss();
+                addTime(pkg, name);
+            }
+        });
+        list.addView(add);
+        box.addView(list, fill(dp(18)));
+
+        Button done = pillButton("Done", false);
+        done.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                dialog.dismiss();
+            }
+        });
+        box.addView(done, fill(dp(18)));
+        showDialog(dialog, box);
+    }
+
+    /** Days and a from/to time for a new schedule, like the desktop's "Add a time". */
+    private void addTime(final String pkg, final String name) {
+        final android.app.Dialog dialog = new android.app.Dialog(this);
+        LinearLayout box = dialogBox();
+        box.addView(dialogHeading("Add a time for " + name), centered(0));
+
+        final boolean[] days = {false, true, true, true, true, true, true, true}; // 1 = Monday … 7 = Sunday
+        LinearLayout dayRow = new LinearLayout(this);
+        dayRow.setOrientation(LinearLayout.HORIZONTAL);
+        for (int i = 1; i <= 7; i++) {
+            final int day = i;
+            final TextView chip = new TextView(this);
+            chip.setText(DAY_NAMES[i - 1]);
+            chip.setGravity(Gravity.CENTER);
+            chip.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+            chip.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
+            chip.setPadding(0, dp(9), 0, dp(9));
+            styleDay(chip, true);
+            chip.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    days[day] = !days[day];
+                    styleDay(chip, days[day]);
+                }
+            });
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+            lp.leftMargin = lp.rightMargin = dp(2);
+            dayRow.addView(chip, lp);
+        }
+        box.addView(dayRow, fill(dp(18)));
+
+        final int[] start = {22 * 60 + 30};
+        final int[] end = {7 * 60};
+        LinearLayout times = new LinearLayout(this);
+        times.setOrientation(LinearLayout.HORIZONTAL);
+        times.setGravity(Gravity.CENTER);
+        times.addView(timeColumn("From", start));
+        View gap = new View(this);
+        times.addView(gap, new LinearLayout.LayoutParams(dp(28), 1));
+        times.addView(timeColumn("To", end));
+        box.addView(times, fill(dp(18)));
+
+        TextView note = dialogText("If the end is earlier than the start, it ends the next morning. "
+                + "The same start and end time means all day.");
+        note.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        box.addView(note, centered(dp(14)));
+
+        Button cancel = pillButton("Cancel", false);
+        Button save = pillButton("Add", true);
+        cancel.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                dialog.dismiss();
+            }
+        });
+        save.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                List<Integer> chosen = new ArrayList<>();
+                for (int d = 1; d <= 7; d++) if (days[d]) chosen.add(d);
+                if (chosen.isEmpty()) {
+                    Toast.makeText(MainActivity.this, "Pick at least one day", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                int[] picked = new int[chosen.size()];
+                for (int k = 0; k < picked.length; k++) picked[k] = chosen.get(k);
+                try {
+                    Core.addSchedule(MainActivity.this, pkg, name, picked, hhmm(start[0]), hhmm(end[0]));
+                    Core.apply(MainActivity.this);
+                    Toast.makeText(MainActivity.this, name + ": " + daysText(picked) + " "
+                            + hoursText(start[0], end[0]) + " added", Toast.LENGTH_SHORT).show();
+                } catch (Exception e) {
+                    Toast.makeText(MainActivity.this, "Couldn't add the time: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                }
+                dialog.dismiss();
+                refresh();
+            }
+        });
+        box.addView(twoButtons(cancel, save), fill(dp(22)));
+        showDialog(dialog, box);
+    }
+
+    /** "From" or "To" over a big time; tapping the time opens the phone's own time picker. */
+    private View timeColumn(String caption, final int[] minutes) {
+        LinearLayout col = new LinearLayout(this);
+        col.setOrientation(LinearLayout.VERTICAL);
+        col.setGravity(Gravity.CENTER_HORIZONTAL);
+        TextView c = new TextView(this);
+        c.setText(caption);
+        c.setTextColor(DIM);
+        c.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        c.setTypeface(Typeface.DEFAULT_BOLD);
+        col.addView(c);
+        final TextView value = new TextView(this);
+        value.setText(hhmm(minutes[0]));
+        value.setTextColor(TEXT);
+        value.setTextSize(TypedValue.COMPLEX_UNIT_SP, 26);
+        value.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
+        value.setPadding(dp(16), dp(6), dp(16), dp(6));
+        value.setBackground(rounded(0x0DFFFFFF, dp(12)));
+        value.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                new android.app.TimePickerDialog(MainActivity.this, new android.app.TimePickerDialog.OnTimeSetListener() {
+                    @Override
+                    public void onTimeSet(android.widget.TimePicker picker, int h, int m) {
+                        minutes[0] = h * 60 + m;
+                        value.setText(hhmm(minutes[0]));
+                    }
+                }, minutes[0] / 60, minutes[0] % 60, true).show();
+            }
+        });
+        col.addView(value, wrap(dp(4)));
+        return col;
+    }
+
+    private void styleDay(TextView chip, boolean on) {
+        GradientDrawable bg = on
+                ? new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{0xFF9B6DFF, 0xFF6D28D9})
+                : new GradientDrawable();
+        if (!on) bg.setColor(0x14FFFFFF);
+        bg.setCornerRadius(dp(12));
+        chip.setBackground(bg);
+        chip.setTextColor(on ? 0xFFFFFFFF : DIM);
+    }
+
+    /** A row in a dialog's list: an icon, a title and an optional line under it. */
+    private View listRow(String iconName, String titleText, String subtitle) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(dp(14), dp(12), dp(14), dp(12));
+        row.addView(icon(iconName, ICON), new LinearLayout.LayoutParams(dp(20), dp(20)));
+        LinearLayout text = new LinearLayout(this);
+        text.setOrientation(LinearLayout.VERTICAL);
+        text.setPadding(dp(14), 0, 0, 0);
+        TextView t = new TextView(this);
+        t.setText(titleText);
+        t.setTextColor(TEXT);
+        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        text.addView(t);
+        if (!subtitle.isEmpty()) {
+            TextView st = new TextView(this);
+            st.setText(subtitle);
+            st.setTextColor(DIM);
+            st.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+            text.addView(st);
+        }
+        row.addView(text, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        return row;
+    }
+
+    private LinearLayout dialogBox() {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setGravity(Gravity.CENTER_HORIZONTAL);
+        box.setPadding(dp(24), dp(26), dp(24), dp(20));
+        box.setBackground(cardWithBorder(0xFF1A1525, 0x298B5CF6, dp(26)));
+        return box;
+    }
+
+    private TextView dialogHeading(String text) {
+        TextView heading = new TextView(this);
+        heading.setText(text);
+        heading.setTextColor(TEXT);
+        heading.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
+        heading.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
+        heading.setGravity(Gravity.CENTER);
+        return heading;
+    }
+
+    private TextView dialogText(String text) {
+        TextView message = new TextView(this);
+        message.setText(text);
+        message.setTextColor(DIM);
+        message.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        message.setLineSpacing(0, 1.25f);
+        message.setGravity(Gravity.CENTER);
+        return message;
+    }
+
+    private LinearLayout twoButtons(Button left, Button right) {
+        LinearLayout buttons = new LinearLayout(this);
+        buttons.setOrientation(LinearLayout.HORIZONTAL);
         LinearLayout.LayoutParams half = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
         half.rightMargin = dp(6);
-        buttons.addView(cancel, half);
+        buttons.addView(left, half);
         LinearLayout.LayoutParams half2 = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
         half2.leftMargin = dp(6);
-        buttons.addView(anchor, half2);
-        box.addView(buttons, fill(dp(22)));
+        buttons.addView(right, half2);
+        return buttons;
+    }
 
+    private void showDialog(android.app.Dialog dialog, View box) {
+        dialog.requestWindowFeature(android.view.Window.FEATURE_NO_TITLE);
         dialog.setContentView(box);
         android.view.Window w = dialog.getWindow();
         if (w != null) {
@@ -463,6 +714,22 @@ public class MainActivity extends Activity {
             w.setDimAmount(0.7f);
         }
         dialog.show();
+    }
+
+    /** A round icon button: violet and tinted when it has something set (like a schedule). */
+    private ImageView iconButton(String iconName, int color, boolean accent, String description, final Runnable onClick) {
+        ImageView b = icon(iconName, color);
+        b.setPadding(dp(9), dp(9), dp(9), dp(9));
+        b.setContentDescription(description);
+        if (accent) b.setBackground(rounded(0x298B5CF6, dp(99)));
+        b.setClickable(true);
+        b.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                onClick.run();
+            }
+        });
+        return b;
     }
 
     /** Violet gradient pill (main action) or a quiet outlined pill, like the desktop buttons. */
@@ -490,6 +757,16 @@ public class MainActivity extends Activity {
         return b;
     }
 
+    /** Red text on a red tint, like the desktop's Uninstall. */
+    private Button dangerButton(String text) {
+        Button b = pillButton(text, false);
+        b.setTextColor(0xFFFCA5A5);
+        GradientDrawable bg = rounded(0x1FF87171, dp(99));
+        bg.setStroke(dp(1), 0x99F87171);
+        b.setBackground(bg);
+        return b;
+    }
+
     /** Anchors one app from the phone: blocking is always allowed here, releasing never is. */
     private void anchorApp(String pkg, String name) {
         Set<String> selected = Core.selected(this);
@@ -501,6 +778,84 @@ public class MainActivity extends Activity {
                 ? name + " can't be hidden (protected by Android)"
                 : name + " anchored · only your computer can release it", Toast.LENGTH_SHORT).show();
         refresh();
+    }
+
+    /** Uninstalls an app the user chose here, the same way as from the computer. */
+    private void uninstallApp(String pkg, String name) {
+        try {
+            Core.uninstallApp(this, pkg);
+            Toast.makeText(this, name + " is being uninstalled", Toast.LENGTH_SHORT).show();
+        } catch (RuntimeException e) {
+            Toast.makeText(this, "Couldn't uninstall " + name + ": " + e.getMessage(), Toast.LENGTH_LONG).show();
+        }
+        // Android uninstalls in the background: look again in a moment.
+        lists.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                refresh();
+            }
+        }, 1500);
+    }
+
+    /** Apps you installed yourself; apps that came with the phone can't be uninstalled. */
+    private boolean canUninstall(String pkg) {
+        try {
+            android.content.pm.ApplicationInfo ai = getPackageManager().getApplicationInfo(pkg, 0);
+            return (ai.flags & android.content.pm.ApplicationInfo.FLAG_SYSTEM) == 0 && !pkg.equals(getPackageName());
+        } catch (PackageManager.NameNotFoundException e) {
+            return false;
+        }
+    }
+
+    private List<Timing.Schedule> schedulesFor(String pkg) {
+        List<Timing.Schedule> out = new ArrayList<>();
+        for (Timing.Schedule sch : Core.schedules(this)) if (sch.packages.contains(pkg)) out.add(sch);
+        return out;
+    }
+
+    /** Under an app's name, like the desktop: "Every day · 22:30–07:00", or "2 schedules". */
+    private String scheduleSummary(String pkg) {
+        List<Timing.Schedule> list = schedulesFor(pkg);
+        if (list.size() == 1) {
+            Timing.Schedule sch = list.get(0);
+            return daysText(sch) + " · " + hoursText(sch) + (sch.enabled ? "" : " · Off");
+        }
+        return count(list.size(), "schedule");
+    }
+
+    private static final String[] DAY_NAMES = {"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"};
+
+    private static String daysText(Timing.Schedule sch) {
+        List<Integer> d = new ArrayList<>();
+        for (int i = 1; i <= 7; i++) if (sch.days[i]) d.add(i);
+        int[] days = new int[d.size()];
+        for (int i = 0; i < days.length; i++) days[i] = d.get(i);
+        return daysText(days);
+    }
+
+    /** "Every day", "Weekdays", "Weekends" or "Mon, Wed, Fri", like the desktop. */
+    private static String daysText(int[] days) {
+        StringBuilder key = new StringBuilder();
+        for (int d : days) key.append(d);
+        if (key.toString().equals("1234567")) return "Every day";
+        if (key.toString().equals("12345")) return "Weekdays";
+        if (key.toString().equals("67")) return "Weekends";
+        StringBuilder out = new StringBuilder();
+        for (int d : days) out.append(out.length() == 0 ? "" : ", ").append(DAY_NAMES[d - 1]);
+        return out.toString();
+    }
+
+    private static String hoursText(Timing.Schedule sch) {
+        return hoursText(sch.start, sch.end);
+    }
+
+    /** "22:30–07:00", or "all day" when start and end are the same. */
+    private static String hoursText(int start, int end) {
+        return start == end ? "all day" : hhmm(start) + "–" + hhmm(end);
+    }
+
+    private static String hhmm(int minutes) {
+        return String.format(java.util.Locale.ROOT, "%02d:%02d", minutes / 60, minutes % 60);
     }
 
     private void filter() {
