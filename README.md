@@ -169,11 +169,9 @@ The phone app doesn't even have permission to use the internet. The desktop app 
 
 Your lists and schedules are stored on the phone. The computer only keeps its key.
 
-## Contribution
+## Feedback
 
-Contributions are welcome. Open an issue or a pull request, or email me at [pafmed@protonmail.com](mailto:pafmed@protonmail.com).
-
-By contributing, you agree that I can use your contribution in Anchor under any license.
+Feedbacks are welcome. Open an issue or email me at [pafmed@protonmail.com](mailto:pafmed@protonmail.com).
 
 ## Donations
 
