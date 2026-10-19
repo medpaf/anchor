@@ -26,6 +26,7 @@ if HAVE_DISPLAY:
     import anchor
 
     REAL_ERROR_DIALOG = anchor.AnchorWindow.error_dialog
+    REAL_TOAST = anchor.AnchorWindow.toast
     REAL_PASSWORD_CHECK = anchor.system_password_check
 
 INSTAGRAM, YOUTUBE, DIALER = "com.instagram.android", "com.google.android.youtube", "com.google.android.dialer"
@@ -1287,6 +1288,17 @@ class GuiTest(unittest.TestCase):
             self.pump(lambda: self.dialogs[-1].get_heading() == "Uninstalled", what="done")
         self.assertFalse(os.path.exists(key_dir), "the backup key is deleted")
         run.assert_not_called()
+
+    def test_a_new_message_replaces_the_one_on_screen(self):
+        win = mock.Mock(spec=[])
+        win.toasts = mock.Mock()
+        with mock.patch.object(anchor.Adw, "Toast") as toast:
+            toast.new.side_effect = lambda text: mock.Mock(name=text)
+            REAL_TOAST(win, "Instagram released")
+            first = win.current_toast
+            REAL_TOAST(win, "TikTok released")
+        first.dismiss.assert_called_once()
+        self.assertEqual(win.toasts.add_toast.call_count, 2)
 
     def test_uninstall_desktop_asks_first(self):
         phone = self.ready_phone()

@@ -872,9 +872,14 @@ class AnchorWindow(Adw.ApplicationWindow):
         self.lookup_action("remove").set_enabled(name in ("main", "setup", "foreign", "limit") and self.agent is not None)
 
     def toast(self, text, timeout=3):
+        # One message at a time, like the Windows app: libadwaita queues toasts, so releasing a few
+        # apps in a row kept showing old messages for half a minute.
+        if getattr(self, "current_toast", None):
+            self.current_toast.dismiss()
         t = Adw.Toast.new(text)
         t.set_timeout(timeout)
         self.toasts.add_toast(t)
+        self.current_toast = t
 
     def error_dialog(self, title, body, details=""):
         d = Adw.AlertDialog.new(title, body)
