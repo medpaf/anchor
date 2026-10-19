@@ -321,28 +321,11 @@ public class MainActivity extends Activity {
         }
         sortByName(others);
 
-        // Apps that came with the phone and were removed from the computer: shown here, but only the
-        // computer can bring them back, so there's no button.
-        List<String[]> removed = new ArrayList<>();
-        try {
-            org.json.JSONArray list = SystemApps.removed(this);
-            for (int i = 0; i < list.length(); i++) {
-                org.json.JSONObject app = list.getJSONObject(i);
-                removed.add(new String[]{app.getString("pkg"), app.getString("label"), app.getString("pkg")});
-            }
-        } catch (org.json.JSONException ignored) {
-        }
-        sortByName(removed);
-
         // Same order as the desktop. Every section but Never allow only shows when it has apps.
         addSection("Never allow", "Apps that can't be installed.", "ic_block", never, false, false);
         if (!hidden.isEmpty()) {
             addSection("Anchored apps", "Hidden from this phone. Only your computer can release them.",
                     "ic_anchor", hidden, true, false);
-        }
-        if (!removed.isEmpty()) {
-            addSection("Removed system apps", "Came with this phone. Only your computer can bring them back.",
-                    "ic_delete", removed, true, false);
         }
         if (!others.isEmpty()) {
             addSection(hidden.isEmpty() ? "Your apps" : "All other apps",
@@ -1259,10 +1242,7 @@ public class MainActivity extends Activity {
     }
 
     /** Apps you installed yourself; apps that came with the phone can't be uninstalled. */
-    /**
-     * Apps you installed yourself. Apps that came with the phone can only be removed from the
-     * computer: Android lets only a USB connection remove them (from here it would just undo updates).
-     */
+    /** Apps you installed yourself. Apps that came with the phone can be anchored instead. */
     private boolean canUninstall(String pkg) {
         return Core.isInstalled(this, pkg) && !cameWithPhone(pkg) && !pkg.equals(getPackageName());
     }

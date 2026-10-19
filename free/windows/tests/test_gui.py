@@ -427,8 +427,7 @@ class GuiTest(unittest.TestCase):
     def test_uninstall_button_only_on_apps_that_can_be_uninstalled(self):
         self.open(self.ready_phone())
         self.wait_page("main")
-        self.assertIsNone(self.win.rows[DIALER].uninstall_button, "the phone needs it")
-        self.assertIsNotNone(self.win.rows[YOUTUBE].uninstall_button, "came with the phone, but can go")
+        self.assertIsNone(self.win.rows[YOUTUBE].uninstall_button, "came with the phone: anchor it instead")
         self.assertIsNotNone(self.win.rows[INSTAGRAM].uninstall_button)
 
     def test_buttons_line_up_in_columns(self):
@@ -528,31 +527,6 @@ class GuiTest(unittest.TestCase):
         self.win.save_key_pdf(os.path.join(self.tmp.name, "no-such-folder", "key.pdf"))
         self.assertEqual(self.errors[-1][0], "Couldn't save the backup key")
 
-    def test_uninstall_a_system_app_moves_it_to_removed(self):
-        phone = self.ready_phone()
-        self.open(phone)
-        self.wait_page("main")
-        self.assertFalse(not self.win.removed_section.isHidden(), "no section while nothing is removed")
-        self.win.rows[YOUTUBE].uninstall_button.click()
-        self.assertIn("came with your phone", self.dialogs[-1].get_body())
-        self.dialogs[-1].emit("response", "uninstall")
-        self.pump(lambda: YOUTUBE not in self.win.rows and self.win.removed_section.rows, what="removed")
-        self.assertEqual(phone.removed, {YOUTUBE: "YouTube"})
-        self.assertTrue(not self.win.removed_section.isHidden())
-        self.assertEqual([r.pkg for r in self.win.removed_section.rows], [YOUTUBE])
-
-    def test_restore_brings_a_system_app_back(self):
-        phone = self.ready_phone()
-        phone.removed[YOUTUBE] = phone.apps.pop(YOUTUBE)
-        self.open(phone)
-        self.wait_page("main")
-        self.pump(lambda: self.win.removed_section.rows, what="removed section")
-        row = self.win.removed_section.rows[0]
-        row.restore.click()
-        self.pump(lambda: YOUTUBE in self.win.rows and not not self.win.removed_section.isHidden(), what="restored")
-        self.assertIn(YOUTUBE, phone.apps)
-        self.assertIn("YouTube is back on your phone", self.toasts)
-
     def test_anchoring_a_system_app_asks_first(self):
         phone = self.ready_phone()
         self.open(phone)
@@ -575,14 +549,6 @@ class GuiTest(unittest.TestCase):
         self.win.on_anchor_clicked(INSTAGRAM)
         self.pump(lambda: INSTAGRAM in phone.blocked and not self.win.working, what="anchored")
         self.assertEqual(len(self.dialogs), before)
-
-    def test_sections_are_in_order(self):
-        self.open(self.ready_phone())
-        self.wait_page("main")
-        lay = self.win.never_section.parentWidget().layout()
-        order = [lay.indexOf(s) for s in (self.win.never_section, self.win.picked_section,
-                                          self.win.removed_section, self.win.other_section)]
-        self.assertEqual(order, sorted(order))
 
     def test_uninstall_needs_confirmation_in_the_list(self):
         phone = self.ready_phone()

@@ -42,7 +42,6 @@ DEFAULT_APPS = [
 class FakePhone:
     PROTECTED = {"com.google.android.dialer"}  # Android refuses to suspend these
     SYSTEM = {"com.google.android.youtube", "com.google.android.apps.maps", "com.google.android.dialer"}
-    CORE = {"com.google.android.dialer", "com.android.vending", "com.android.settings", "app.anchor.agent"}
 
     def __init__(self, apps=DEFAULT_APPS, version=ac.AGENT_VERSION, model="Google Pixel 8",
                  device_id="a1b2c3d4e5f60718"):
@@ -75,7 +74,6 @@ class FakePhone:
         self.dpm_output = None  # set to simulate a `dpm set-device-owner` failure
         self.install_output = None  # set to simulate an `adb install` failure
         self.accounts = []  # (name, type, owning package) signed in on the phone
-        self.removed = {}  # system apps uninstalled for the user: pkg -> label (Android keeps a copy)
         self.edition = "free"  # which desktop app last asked (the phone app shows its name)
         self.commands = []
 
@@ -177,8 +175,6 @@ class FakePhone:
             "install_placeholders": sorted(self.placeholders), "install_missing": self.missing(),
             "permissions_removed": {p: len(v) for p, v in self.revoked.items() if v},
             "selected": sorted(self.selected), "blocked": sorted(self.blocked), "failed": sorted(self.failed),
-            "removed_system": [{"pkg": p, "label": l} for p, l in sorted(self.removed.items())],
-            "core_apps": sorted(self.CORE),
         }
 
     # ---- the provider ----
@@ -240,19 +236,10 @@ class FakePhone:
                 pkg = payload.get("pkg")
                 if pkg not in self.apps:
                     return err("bad_request", f"{pkg} isn't installed")
-                if pkg in self.SYSTEM:  # like Android: from the phone app this would only undo updates
-                    return err("bad_request", "Apps that came with the phone can only be removed from the computer")
+                if pkg in self.SYSTEM:
+                    return err("bad_request", "System apps can't be uninstalled")
                 del self.apps[pkg]
             self._apply()
-            res = self._status(token)
-        elif method == "restore_system_app":
-            e = need_auth()
-            if e:
-                return e
-            pkg = payload.get("pkg")
-            if pkg not in self.removed:
-                return err("bad_request", f"{pkg} isn't a removed system app")
-            self.apps[pkg] = self.removed.pop(pkg)
             res = self._status(token)
         elif method == "uninstall_blocked":
             e = need_auth()
@@ -397,23 +384,12 @@ class FakeAdb(ac.Adb):
         ph = self.phone
         if cmd.startswith("pm list packages -u "):
             pkg = cmd.split()[-1]
-            return f"package:{pkg}\n" if pkg in ph.apps or pkg in ph.placeholders or pkg in ph.removed else ""
+            return f"package:{pkg}\n" if pkg in ph.apps or pkg in ph.placeholders else ""
         if cmd.startswith("pm path "):
             return "package:/data/app/base.apk\n" if ph.installed else ""
         if cmd.startswith("dumpsys deviceidle whitelist +") or cmd.startswith("cmd appops set"):
             ph.background_allowed = True
             return "Added: app.anchor.agent\n" if "deviceidle" in cmd else ""
-        m = re.fullmatch(r"pm uninstall --user 0 (\S+)", cmd)
-        if m:  # removes an app that came with the phone for the user; Android keeps a copy
-            pkg = m.group(1)
-            if pkg not in ph.apps:
-                return "Failure [DELETE_FAILED_INTERNAL_ERROR]\n"
-            if pkg in ph.blocked:  # Android treats a hidden app as not installed
-                return "Failure [not installed for 0]\n"
-            if pkg in ph.SYSTEM:
-                ph.removed[pkg] = ph.apps[pkg]
-            del ph.apps[pkg]
-            return "Success\n"
         if cmd == "dumpsys account":
             return dumpsys_account(ph.accounts)
         if cmd.startswith("dpm set-device-owner"):

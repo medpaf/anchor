@@ -49,7 +49,7 @@ import java.util.zip.ZipOutputStream;
  * every command that changes anything must carry the computer's key.
  */
 public class CommandProvider extends ContentProvider {
-    static final int VERSION = 42;
+    static final int VERSION = 43;
     private static final int SHELL_UID = 2000;
     private static final int ICON_PX = 96;
 
@@ -180,13 +180,6 @@ public class CommandProvider extends ContentProvider {
                 requireAuth(c, token);
                 PrivateDns.lock(c, in.isNull("host") ? null : in.getString("host"));
                 return status(c, token);
-            case "restore_system_app":
-                // {"pkg": ...}: brings back an app that came with the phone and was uninstalled.
-                // Only the computer can: the phone app never offers it.
-                requireAuth(c, token);
-                SystemApps.restore(c, in.getString("pkg"));
-                Core.apply(c);
-                return status(c, token);
             case "factory_reset_lock":
                 // Pro: {"locked": true} greys out "Erase all data" in the phone's Settings. Recovery mode
                 // (the phone's buttons at start-up) can't be blocked by any app and still works.
@@ -230,8 +223,7 @@ public class CommandProvider extends ContentProvider {
                 .put("permissions_removed", new JSONObject(Permissions.counts(c)))
                 .put("private_dns", PrivateDns.status(c))
                 .put("factory_reset_locked", Core.factoryResetLocked(c))
-                .put("removed_system", SystemApps.removed(c))
-                .put("core_apps", SystemApps.core(c))
+
                 .put("edition", Edition.get(c))
                 .put("exact_alarms", Core.canWakeExactly(c))
                 .put("version", VERSION)

@@ -524,9 +524,7 @@ final class Core {
             throw new IllegalArgumentException(pkg + " isn't installed");
         }
         if ((ai.flags & ApplicationInfo.FLAG_SYSTEM) != 0) {
-            // Removing an app that came with the phone needs the USB connection (the computer does it
-            // with "pm uninstall --user 0"); from here Android would only undo its updates.
-            throw new IllegalArgumentException("Apps that came with the phone can only be removed from the computer");
+            throw new IllegalArgumentException("System apps can't be uninstalled");
         }
         if (InstallBlocks.isPlaceholder(c, pkg)) throw new IllegalArgumentException("That's Anchor's placeholder");
         InstallBlocks.uninstall(c, pkg);

@@ -466,15 +466,8 @@ class AnchorWindow(QMainWindow):
         # app moves it from one to the other.
         self.picked_section = w.Section("anchor", empty_text="Nothing anchored. Tap Anchor on an app below.")
         self.other_section = w.Section("grid", empty_text="No other apps")
-        # Apps that came with the phone and were uninstalled: shown only when there are some.
-        self.removed_section = w.Section("delete", "Removed system apps",
-                                         "Apps that came with your phone. Restore puts one back.")
-        self.removed_section.empty.hide()
-        self.removed_section.hide()
-        self.removed_key = None
-        for s in (self.picked_section, self.removed_section, self.other_section):
-            if s is not self.removed_section:
-                s.toggled.connect(lambda _open, s=s: self.apply_filter(s))
+        for s in (self.picked_section, self.other_section):
+            s.toggled.connect(lambda _open, s=s: self.apply_filter(s))
             lay.addWidget(s)
         lay.addStretch(1)
         return w.scroller(w.Clamp(box, 600))
@@ -642,7 +635,7 @@ class AnchorWindow(QMainWindow):
     def uninstalls_when_never_allowed(self, pkg):
         """On the phone, installed by the user and not anchored: adding it to Never allow uninstalls it."""
         row = self.rows.get(pkg)
-        return bool(row and row.uninstall_button and not row.system and pkg not in self.selected)
+        return bool(row and row.uninstall_button and pkg not in self.selected)
 
     def confirm_never_allow_uninstall(self, new, on_phone):
         """Asks before uninstalling apps that are on the phone, then uninstalls them and adds them all."""
@@ -910,7 +903,6 @@ class AnchorWindow(QMainWindow):
                 self.populate_apps(*apps)
                 self.update_hero()
                 self.update_never_allow()
-                self.update_removed()
                 self.ensure_placeholders()
                 if any(not x.get("packages") for x in st.get("schedules", [])):
                     # Version 3 had schedules for the whole list; they're per app now.
@@ -1053,8 +1045,7 @@ class AnchorWindow(QMainWindow):
             row.uninstall_button = None
             row.system = bool(app.get("system"))
             if self.can_uninstall(app):
-                uninstall = w.button("Remove" if app.get("system") else "Uninstall", "row-uninstall",
-                                     f"{'Remove' if app.get('system') else 'Uninstall'} {app['label']} from your phone",
+                uninstall = w.button("Uninstall", "row-uninstall", f"Uninstall {app['label']} from your phone",
                                      lambda a=app: self.on_uninstall_app(a))
                 row.uninstall_button = uninstall
                 slot = uninstall
@@ -1091,7 +1082,7 @@ class AnchorWindow(QMainWindow):
         compact = self.width() < 540
         slot.setFixedWidth(34 if compact else 78)
         if button:
-            button.setText("" if compact else ("Remove" if row.system else "Uninstall"))
+            button.setText("" if compact else "Uninstall")
             button.setIcon(w.symbol_icon("delete", theme.FAINT, 18) if compact else QIcon())
             button.setIconSize(QSize(18, 18))
 
@@ -1217,49 +1208,10 @@ class AnchorWindow(QMainWindow):
         self.update_hero()
         self.update_row_notes()
         self.update_never_allow()
-        self.update_removed()
-
-    def update_removed(self):
-        """Removed system apps, each with Restore (which only this computer can do)."""
-        apps = sorted(self.status.get("removed_system", []), key=lambda a: a["label"].casefold())
-        key = json.dumps(apps)
-        if key == self.removed_key:
-            return
-        self.removed_key = key
-        self.removed_section.clear()
-        for app in apps:
-            row = w.Row(app["label"], app["pkg"])
-            row.restore = w.button("Restore", "pill", f"Put {app['label']} back on your phone",
-                                   lambda a=app: self.on_restore_system_app(a))
-            row.add_suffix(row.restore)
-            row.pkg = app["pkg"]
-            self.removed_section.add(row)
-        self.removed_section.setVisible(bool(apps))
-        self.removed_section.set_title(f"Removed system apps ({len(apps)})")
-
-    def on_restore_system_app(self, app):
-        agent, token, pkg = self.agent, self.keys.token, app["pkg"]
-        self.working = True
-
-        def done(st):
-            self.working = False
-            self.apply_status(st)
-            self.toast(f"{app['label']} is back on your phone")
-            self.reload_apps()
-
-        def fail(e):
-            self.working = False
-            self.error_dialog(f"Couldn't restore {app['label']}", str(e))
-
-        in_background(lambda: agent.restore_system_app(token, pkg), done, fail)
 
     def can_uninstall(self, app):
-        """Any app on the phone except the ones it needs (Phone, SMS, home screen, Settings, Play Store).
-        A phone app too old to say which those are: only apps you installed yourself."""
-        if app["pkg"] not in self.installed:
-            return False
-        core = self.status.get("core_apps")
-        return app["pkg"] not in core if core is not None else not app.get("system")
+        """Apps you installed yourself. Apps that came with the phone can be anchored instead."""
+        return not app.get("system") and app["pkg"] in self.installed
 
     def update_row_notes(self):
         st = self.status
@@ -1417,8 +1369,7 @@ class AnchorWindow(QMainWindow):
         d.uninstall = None
         row = self.rows.get(pkg)
         if row and row.uninstall_button:  # apps you installed yourself, like the Uninstall in the list
-            verb = "Remove" if row.system else "Uninstall"
-            d.uninstall = w.button(verb, "pill-danger", f"{verb} {label} from your phone",
+            d.uninstall = w.button("Uninstall", "pill-danger", f"Uninstall {label} from your phone",
                                    lambda: (d.close_overlay(), self.on_uninstall_app(app)))
             d.body.addWidget(d.uninstall, 0, Qt.AlignHCenter)
         # Until the phone answers: a spinner instead of half-empty cards; then everything at once.
@@ -1546,13 +1497,9 @@ class AnchorWindow(QMainWindow):
         in_background(lambda: agent.set_permission(token, pkg, permission, grant), done, fail)
 
     def on_uninstall_app(self, app):
-        verb = "Remove" if app.get("system") else "Uninstall"  # came with the phone: Android keeps a copy
-        body = (f"{app['label']} came with your phone. Removing it can stop some of the phone's features from "
-                "working. It's removed with its data, and you can bring it back here later, under Removed "
-                "system apps." if app.get("system") else f"{app['label']} and its data are removed from your phone.")
-        d = w.AlertDialog(self, f"{verb} {app['label']}?", body)
+        d = w.AlertDialog(self, f"Uninstall {app['label']}?", f"{app['label']} and its data are removed from your phone.")
         d.add_response("cancel", "Cancel")
-        d.add_response("uninstall", verb)
+        d.add_response("uninstall", "Uninstall")
         d.set_response_appearance("uninstall", "destructive")
         d.set_close_response("cancel")
 
@@ -1560,25 +1507,12 @@ class AnchorWindow(QMainWindow):
             if rid != "uninstall":
                 return
             agent, token, pkg = self.agent, self.keys.token, app["pkg"]
-            anchored, mode = set(self.selected), self.status.get("mode")
             self.working = True
 
             def work():
-                if app.get("system"):
-                    if pkg in anchored:  # Android can't remove a hidden app: release it first
-                        rest = anchored - {pkg}
-                        agent.select(token, rest)
-                        if not rest and mode is not None:
-                            agent.end_anchoring(token)
-                    agent.remove_system_app(pkg)  # over USB: the phone app itself can't
-                else:
-                    agent.uninstall_app(token, pkg)
+                agent.uninstall_app(token, pkg)
                 for _ in range(40):  # the phone uninstalls in the background
-                    if app.get("system"):  # Android keeps a copy: wait until the phone lists it as removed
-                        st = agent.status(token)
-                        if pkg in {a["pkg"] for a in st.get("removed_system", [])}:
-                            return st
-                    elif not agent.installed_package(pkg):
+                    if not agent.installed_package(pkg):
                         break
                     time.sleep(0.25)
                 return agent.status(token)
@@ -1586,13 +1520,13 @@ class AnchorWindow(QMainWindow):
             def done(st):
                 self.working = False
                 self.apply_status(st)
-                self.toast(f"{app['label']} {'removed' if app.get('system') else 'uninstalled'}")
+                self.toast(f"{app['label']} uninstalled")
                 self.reload_apps()
                 self.ensure_placeholders()
 
             def fail(e):
                 self.working = False
-                self.error_dialog(f"Couldn't {verb.lower()} {app['label']}", str(e))
+                self.error_dialog(f"Couldn't uninstall {app['label']}", str(e))
 
             in_background(work, done, fail)
 
