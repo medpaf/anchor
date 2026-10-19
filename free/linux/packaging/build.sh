@@ -8,7 +8,9 @@ set -euo pipefail
 LINUX="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$LINUX"
 
-VERSION="1.0"   # Debian packages need a version number; Anchor doesn't show one anywhere else
+# Debian packages need a version number, and apt only installs a download over an older one when the
+# number went up. Anchor doesn't show one anywhere, so it's simply when the package was built.
+VERSION="1.0.$(date -u +%Y%m%d%H%M)"
 STAGE="$LINUX/build/packages"
 DIST="$LINUX/dist"
 rm -rf -- "$STAGE" "$DIST"
