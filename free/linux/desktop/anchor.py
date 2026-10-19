@@ -1966,9 +1966,11 @@ class AnchorWindow(Adw.ApplicationWindow):
     def on_uninstall_desktop(self):
         d = Adw.AlertDialog.new(
             "Uninstall Anchor from this computer?",
-            "This removes the Anchor app and its launcher from this computer. It does not touch your phone.\n\n"
-            "Your backup key stays in ~/.local/share/anchor, so Anchor can still release your phone "
-            "if you install it again. Keep a copy elsewhere too: Menu → Backup key… → Save as PDF….")
+            "This removes the Anchor app, its launcher and your backup key from this computer. "
+            "It does not touch your phone.\n\n"
+            "If a phone is still anchored to this computer, remove Anchor from it first (Menu → Remove "
+            "Anchor from phone…), or save the key (Menu → Backup key… → Save as PDF…). Without the key, "
+            "a phone that is still anchored can only be recovered with a factory reset.")
         d.add_response("cancel", "Cancel")
         d.add_response("uninstall", "Uninstall")
         d.set_response_appearance("uninstall", Adw.ResponseAppearance.DESTRUCTIVE)
@@ -1981,9 +1983,8 @@ class AnchorWindow(Adw.ApplicationWindow):
 
             def work():
                 data_home = Path(GLib.get_user_data_dir())
-                # The backup key (data_home / "anchor") is kept on purpose: without it, a phone that
-                # is still anchored could only be recovered with a factory reset.
-                if PACKAGED:  # installed from the .deb: remove the package
+                if PACKAGED:  # installed from the .deb: remove the key, then the package itself
+                    shutil.rmtree(data_home / "anchor", ignore_errors=True)
                     if not (shutil.which("pkexec") and os.access(UNINSTALL_HELPER, os.X_OK)):
                         return "package"
                     code = subprocess.run(["pkexec", "--disable-internal-agent", UNINSTALL_HELPER],
@@ -1994,6 +1995,7 @@ class AnchorWindow(Adw.ApplicationWindow):
                     Path.home() / ".local" / "bin" / "anchor",
                     data_home / "applications" / f"{APP_ID}.desktop",
                     data_home / "icons" / "hicolor" / "scalable" / "apps" / f"{APP_ID}.svg",
+                    data_home / "anchor",  # the backup key and settings
                 ]
                 for p in targets:
                     try:
@@ -2018,7 +2020,7 @@ class AnchorWindow(Adw.ApplicationWindow):
             def done(system_removed):
                 msg = "Anchor has been removed from this computer."
                 if system_removed == "package":  # the password prompt was cancelled or failed
-                    msg = ("The Anchor app is still installed (your backup key is kept). "
+                    msg = ("Your backup key was removed, but the Anchor app itself is still installed. "
                            "To remove it, run:\nsudo apt remove anchor")
                 elif not system_removed:
                     msg += ("\n\nThe system password-prompt files were left in place. "

@@ -152,13 +152,11 @@ Open the desktop app and go to Menu → Remove Anchor from phone…. Every hidde
 
 ### Removing Anchor from the computer
 
-If you're done with Anchor for good, remove it from the phone first.
+Remove Anchor from the phone first, or save your backup key somewhere else. Uninstalling deletes the key from this computer, and without it a phone that still has apps anchored can only be fixed with a factory reset.
 
-On Linux, open Anchor and go to Menu → Uninstall Anchor from this computer…. It asks for your password and removes the app.
+On Linux, open Anchor and go to Menu → Uninstall Anchor from this computer…. It deletes the key, asks for your password and removes the app. (If you remove the package with `sudo apt remove anchor` instead, the key stays in `~/.local/share/anchor`.)
 
-On Windows, go to Settings → Apps → Installed apps, find Anchor and click Uninstall.
-
-Uninstalling keeps your key (in `~/.local/share/anchor` on Linux and `%APPDATA%\Anchor` on Windows), so a reinstall picks up where you left off and can still release your phone. Delete that folder too if you've removed Anchor from the phone and you're done with it.
+On Windows, go to Settings → Apps → Installed apps, find Anchor and click Uninstall. It warns you first, then deletes the key in `%APPDATA%\Anchor` along with the app.
 
 ## Privacy
 

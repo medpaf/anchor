@@ -15,7 +15,7 @@ from pathlib import Path
 AGENT_PKG = "app.anchor.agent"
 AGENT_ADMIN = f"{AGENT_PKG}/.AdminReceiver"
 AGENT_URI = "content://app.anchor.agent.cmd"
-AGENT_VERSION = 35  # must match CommandProvider.VERSION in the bundled APK
+AGENT_VERSION = 36  # must match CommandProvider.VERSION in the bundled APK
 
 
 class AdbError(Exception):

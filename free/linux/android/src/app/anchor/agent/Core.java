@@ -323,6 +323,7 @@ final class Core {
         DevicePolicyManager dpm = dpm(c);
         ComponentName admin = admin(c);
         long now = System.currentTimeMillis();
+        PrivateDns.reapply(c);
         expireTimer(c, now);
         List<Timing.Schedule> schedules = schedules(c);
 
@@ -493,6 +494,7 @@ final class Core {
         unshift(c);
         apply(c);
         lockClock(c, false);
+        PrivateDns.release(c);
         unpair(c);
         dpm(c).clearDeviceOwnerApp(c.getPackageName());
     }

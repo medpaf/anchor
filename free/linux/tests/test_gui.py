@@ -1267,7 +1267,7 @@ class GuiTest(unittest.TestCase):
             self.win.on_uninstall_desktop()
             self.dialogs[-1].emit("response", "uninstall")
             self.pump(lambda: self.dialogs[-1].get_heading() == "Uninstalled", what="done")
-        self.assertTrue(os.path.isdir(key_dir), "the backup key is kept")
+        self.assertFalse(os.path.exists(key_dir), "the backup key is deleted")
         self.assertEqual(run.call_args[0][0], ["pkexec", "--disable-internal-agent", anchor.UNINSTALL_HELPER])
         return self.dialogs[-1].get_body()
 
@@ -1284,6 +1284,23 @@ class GuiTest(unittest.TestCase):
         self.assertTrue(anchor.is_x11(X11Display()))
         self.assertFalse(anchor.is_x11(WaylandDisplay()))
         self.assertIn("popover > contents { border-radius: 0; }", anchor.X11_CSS)
+
+    def test_uninstall_of_an_install_sh_copy_deletes_the_key_too(self):
+        self.open(self.ready_phone())
+        self.wait_page("main")
+        key_dir = os.path.join(self.tmp.name, "anchor")
+        self.assertTrue(os.path.isdir(key_dir))
+        self.assertEqual(anchor.GLib.get_user_data_dir(), self.tmp.name, "only the test's own folder is touched")
+        with mock.patch.object(anchor, "PACKAGED", False), \
+                mock.patch.object(anchor.shutil, "which", return_value=None), \
+                mock.patch.object(anchor.subprocess, "run") as run, \
+                mock.patch.object(Adw.Application, "quit"):
+            self.win.on_uninstall_desktop()
+            self.assertIn("its launcher and your backup key from this computer", self.dialogs[-1].get_body())
+            self.dialogs[-1].emit("response", "uninstall")
+            self.pump(lambda: self.dialogs[-1].get_heading() == "Uninstalled", what="done")
+        self.assertFalse(os.path.exists(key_dir), "the backup key is deleted")
+        run.assert_not_called()
 
     def test_uninstall_desktop_asks_first(self):
         phone = self.ready_phone()
