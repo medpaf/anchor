@@ -197,7 +197,7 @@ To uninstall it:
 | "The phone blocked the install" | Turn on "Install via USB" in Developer options and look for a confirmation prompt on the phone. |
 | "One more developer switch is needed" | On Xiaomi phones, turn on "USB debugging (Security settings)". |
 | "Another app already manages this phone" | It's a work or school phone. Anchor can't be used on it. |
-| "The free version works with one phone" | This computer is already set up for another phone. Remove Anchor from that phone first, or forget it if it was reset or lost. See [Free version: one phone](#free-version-one-phone). |
+| "The free version works with one phone" | This computer is already set up for another phone. Remove Anchor from that phone first, or forget it if it was reset or lost. See [Free version](#free-version). |
 | "Anchored to another computer" | The phone was paired with a different computer. Enter that computer's backup key. |
 
 
