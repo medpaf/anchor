@@ -71,9 +71,10 @@ Anchor, by Paulo Medeiros <pafmed@protonmail.com>
 https://github.com/medpaf/anchor
 
 Copyright (C) 2026 Paulo Medeiros
-License: GPL-3.0-only
-The full text of the license is in /usr/share/common-licenses/GPL-3.
+License: PolyForm Strict 1.0.0 (source-available, not open source)
+
 EOF
+cat "$LINUX/../../LICENSE" >> "$DEB/usr/share/doc/anchor/copyright"
 
 chmod 644 "$DEB/usr/share/applications/app.anchor.Desktop.desktop" "$DEB/usr/share/doc/anchor/copyright"
 

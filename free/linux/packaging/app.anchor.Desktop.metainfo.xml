@@ -4,7 +4,7 @@
 <component type="desktop-application">
   <id>app.anchor.Desktop</id>
   <metadata_license>CC0-1.0</metadata_license>
-  <project_license>GPL-3.0-only</project_license>
+  <project_license>LicenseRef-proprietary=https://polyformproject.org/licenses/strict/1.0.0</project_license>
 
   <name>Anchor</name>
   <summary>Block distracting apps on your Android phone</summary>
