@@ -160,7 +160,8 @@ switch slider { background-color: #F4F0FF; }
 
 /* ---- Dialogs, popovers, toasts ---- */
 dialog.alert .heading, .alert .heading { font-weight: 800; }
-popover > contents { border-radius: 14px; box-shadow: 0 0 0 1px alpha(white, 0.06), 0 12px 30px alpha(black, 0.5); }
+/* Only a thin outline: a soft outer shadow turns into a black box around the menu on X11. */
+popover > contents { border-radius: 14px; box-shadow: 0 0 0 1px alpha(white, 0.08); }
 toast { background-color: #241C33; color: #F1ECFF; border-radius: 999px;
         box-shadow: 0 0 0 1px alpha(#8B5CF6, 0.35), 0 10px 30px alpha(black, 0.5); }
 
