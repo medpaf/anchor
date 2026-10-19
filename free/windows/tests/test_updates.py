@@ -77,6 +77,12 @@ class UpdatesTest(unittest.TestCase):
                 with self.assertRaises(OSError):
                     updates.download("linux", "anchor-linux.deb")
 
+    def test_download_refuses_a_windows_file_that_isnt_a_program(self):
+        with mock.patch.object(updates.urllib.request, "urlopen", return_value=io.BytesIO(b"<html>Not Found</html>")):
+            with mock.patch("tempfile.mkdtemp", return_value=self.tmp.name):
+                with self.assertRaises(OSError):
+                    updates.download("windows", "anchor-win.exe")
+
     def test_download_pages(self):
         self.assertEqual(updates.download_page("linux"), "https://github.com/medpaf/anchor/releases/tag/linux")
         self.assertEqual(updates.download_page("windows"), "https://github.com/medpaf/anchor/releases/tag/windows")

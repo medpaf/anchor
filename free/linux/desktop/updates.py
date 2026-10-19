@@ -48,10 +48,12 @@ def download(channel, filename, timeout=120):
     with urllib.request.urlopen(request, timeout=timeout) as response, open(path, "wb") as out:  # noqa: S310
         while chunk := response.read(64 * 1024):
             out.write(chunk)
-    if filename.endswith(".deb"):
-        with open(path, "rb") as f:
-            if f.read(8) != b"!<arch>\n":  # every .deb starts like this
-                raise OSError("The download isn't a Debian package")
+    expected = {".deb": (b"!<arch>\n", "a Debian package"), ".exe": (b"MZ", "a Windows program")}
+    for ending, (start, what) in expected.items():
+        if filename.endswith(ending):
+            with open(path, "rb") as f:
+                if f.read(len(start)) != start:  # every .deb and .exe starts like this
+                    raise OSError(f"The download isn't {what}")
     return path
 
 

@@ -1084,6 +1084,41 @@ class GuiTest(unittest.TestCase):
         opened = self.check_updates(anchor.updates.AVAILABLE, press="download")
         self.assertEqual(opened, ["https://github.com/medpaf/anchor/releases/tag/windows"])
 
+    def update_on_windows(self, download_error=None):
+        """Check for updates… → Update, with the download, installer and quitting replaced."""
+        self.open(self.ready_phone())
+        self.wait_page("main")
+        installer = os.path.join(self.tmp.name, "anchor-win.exe")
+        with mock.patch.object(anchor.AnchorWindow, "can_update_itself", lambda win: True), \
+                mock.patch.object(anchor.updates, "check", return_value=anchor.updates.AVAILABLE), \
+                mock.patch.object(anchor.updates, "download", return_value=installer,
+                                  side_effect=download_error) as download, \
+                mock.patch.object(plat, "run_update_installer") as run_installer, \
+                mock.patch.object(QApplication, "quit") as quit_:
+            self.win.activate_action("win.updates")
+            self.pump(lambda: self.dialogs, what="update answer")
+            self.assertIn("installs it over this one and restarts", self.dialogs[-1].get_body())
+            self.dialogs[-1].emit("response", "update")
+            self.pump(lambda: quit_.called or self.errors, what="update finished")
+        return download, run_installer, quit_, installer
+
+    def test_update_downloads_the_installer_and_closes_anchor(self):
+        download, run_installer, quit_, installer = self.update_on_windows()
+        download.assert_called_once_with("windows", "anchor-win.exe")
+        run_installer.assert_called_once_with(installer)
+        quit_.assert_called_once()
+        self.assertTrue(os.path.isdir(os.path.join(self.tmp.name, "anchor")), "the key stays")
+
+    def test_update_download_failing_is_explained(self):
+        _download, run_installer, quit_, _installer = self.update_on_windows(download_error=OSError("offline"))
+        self.assertEqual(self.errors[-1][0], "Couldn't update Anchor")
+        run_installer.assert_not_called()
+        quit_.assert_not_called()
+
+    def test_a_copy_run_from_source_opens_the_download_page(self):
+        self.open(self.ready_phone())
+        self.assertFalse(self.win.can_update_itself())
+
     def test_check_for_updates_not_now_opens_nothing(self):
         self.open(self.ready_phone())
         self.wait_page("main")

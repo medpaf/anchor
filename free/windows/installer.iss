@@ -40,6 +40,17 @@ Name: "{autodesktop}\Anchor"; Filename: "{app}\Anchor.exe"; AppUserModelID: "app
 
 [Run]
 Filename: "{app}\Anchor.exe"; Description: "Open Anchor"; Flags: nowait postinstall skipifsilent
+; Check for updates… → Update runs this installer silently with /UPDATE=1, after closing Anchor:
+; open the new version once it's installed.
+Filename: "{app}\Anchor.exe"; Flags: nowait; Check: IsUpdate
 
-; The backup key in %APPDATA%\Anchor is kept on purpose: without it, a phone that is still anchored
-; can only be recovered with a factory reset. Anchor's own "Uninstall Anchor from this computer…" removes it.
+; The backup key in %APPDATA%\Anchor is kept on purpose, also when Anchor is uninstalled in Settings:
+; without it, a phone that is still anchored can only be recovered with a factory reset.
+
+[Code]
+// True when Anchor's own update started this installer (with /UPDATE=1).
+function IsUpdate: Boolean;
+begin
+  Result := ExpandConstant('{param:UPDATE|0}') = '1';
+end;
+

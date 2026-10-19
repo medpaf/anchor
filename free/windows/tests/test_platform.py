@@ -68,6 +68,28 @@ class MachineIdTest(unittest.TestCase):
             self.assertEqual(ac.machine_id(), "guid-123")
 
 
+class UpdateTest(unittest.TestCase):
+    def test_only_the_installed_app_updates_itself(self):
+        self.assertFalse(plat.installed_by_installer(), "not when run from source")
+        with tempfile.TemporaryDirectory() as d, mock.patch.object(plat, "WINDOWS", True), \
+                mock.patch.object(plat.sys, "frozen", True, create=True), \
+                mock.patch.object(plat.sys, "executable", str(Path(d, "Anchor.exe"))):
+            self.assertFalse(plat.installed_by_installer(), "not without the installer's uninstaller")
+            Path(d, "unins000.exe").write_text("")
+            self.assertTrue(plat.installed_by_installer())
+
+    def test_the_installer_runs_silently_and_reopens_anchor(self):
+        with mock.patch.object(plat.subprocess, "DETACHED_PROCESS", 8, create=True), \
+                mock.patch.object(plat.subprocess, "CREATE_NEW_PROCESS_GROUP", 512, create=True), \
+                mock.patch.object(plat.subprocess, "Popen") as popen:
+            plat.run_update_installer("C:/Temp/anchor-win.exe")
+        args = popen.call_args[0][0]
+        self.assertEqual(args[0], "C:/Temp/anchor-win.exe")
+        self.assertIn("/VERYSILENT", args)
+        self.assertIn("/UPDATE=1", args, "the installer opens the new version")
+        self.assertEqual(popen.call_args.kwargs["creationflags"], 8 | 512, "it outlives Anchor")
+
+
 class WindowsOnlyTest(unittest.TestCase):
     def test_title_bar_and_app_id_do_nothing_elsewhere(self):
         with mock.patch.object(plat, "WINDOWS", False):

@@ -1684,6 +1684,15 @@ class AnchorWindow(QMainWindow):
             if result == updates.CURRENT:
                 d = w.AlertDialog(self, "You're up to date", "This is the newest version of Anchor.")
                 d.add_response("close", "OK")
+            elif result == updates.AVAILABLE and self.can_update_itself():
+                d = w.AlertDialog(self, "A new version of Anchor is available",
+                                  "Anchor downloads it from GitHub, installs it over this one and restarts. "
+                                  "Your key and settings stay.")
+                d.add_response("later", "Not now")
+                d.add_response("update", "Update")
+                d.set_response_appearance("update", "suggested")
+                d.set_default_response("update")
+                d.set_close_response("later")
             elif result == updates.AVAILABLE:
                 d = w.AlertDialog(self, "A new version of Anchor is available",
                                   "Download it from GitHub and install it over this one. Your key and settings stay.")
@@ -1699,8 +1708,13 @@ class AnchorWindow(QMainWindow):
                 d.add_response("close", "Close")
                 d.add_response("download", "Open downloads")
                 d.set_close_response("close")
-            d.connect("response", lambda _d, rid: rid == "download" and QDesktopServices.openUrl(
-                QUrl(updates.download_page(UPDATE_CHANNEL))))
+            def response(_d, rid):
+                if rid == "download":
+                    QDesktopServices.openUrl(QUrl(updates.download_page(UPDATE_CHANNEL)))
+                elif rid == "update":
+                    self.install_update()
+
+            d.connect("response", response)
             d.present(self)
 
         def fail(e):
@@ -1709,6 +1723,26 @@ class AnchorWindow(QMainWindow):
 
         self.toast("Checking for updates…")
         in_background(lambda: updates.check(UPDATE_CHANNEL), done, fail)
+
+    def can_update_itself(self):
+        """Only Anchor installed by anchor-win.exe can (not a copy run from source)."""
+        return plat.installed_by_installer()
+
+    def install_update(self):
+        """Downloads the newest anchor-win.exe, then closes Anchor while it installs silently and opens
+        the new version. The key and settings in %APPDATA%\\Anchor aren't touched."""
+        self.toast("Downloading the new version…", timeout=10)
+
+        def done(installer):
+            plat.run_update_installer(installer)
+            QApplication.quit()
+
+        def fail(e):
+            self.error_dialog("Couldn't update Anchor",
+                              "Anchor couldn't download the new version. Check your internet connection "
+                              "and try again.", str(e))
+
+        in_background(lambda: updates.download(UPDATE_CHANNEL, "anchor-win.exe"), done, fail)
 
     def on_donate(self):
         QDesktopServices.openUrl(QUrl(DONATE_URL))

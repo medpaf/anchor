@@ -162,6 +162,24 @@ def password_missing_text():
             "Install it with: sudo apt install pkexec")
 
 
+# ---- Updating on Windows ------------------------------------------------------------------------
+
+def installed_by_installer():
+    """True for Anchor installed by anchor-win.exe (its uninstaller sits next to Anchor.exe). Only that
+    copy can update itself; one run from source opens the download page instead."""
+    if not (WINDOWS and getattr(sys, "frozen", False)):
+        return False
+    return (Path(sys.executable).resolve().parent / "unins000.exe").is_file()
+
+
+def run_update_installer(installer):
+    """Starts the downloaded installer on its own: silently, closing Anchor if it's still open, and
+    opening the new version when it's done (/UPDATE=1, see installer.iss). Anchor quits right after."""
+    detached = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+    subprocess.Popen([str(installer), "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/CLOSEAPPLICATIONS",
+                      "/UPDATE=1"], creationflags=detached, close_fds=True)
+
+
 # ---- Window chrome on Windows -------------------------------------------------------------------
 
 APP_ID = "app.anchor.Desktop"

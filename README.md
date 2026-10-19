@@ -107,7 +107,13 @@ GitHub builds these downloads by itself on every change, so the links always giv
 
 ### Updating
 
-Open Anchor and choose **Menu → Check for updates…**. If you installed the `.deb`, **Update** downloads the new version, installs it after your password and restarts Anchor. Otherwise it opens the download page: install the new version over the old one, without uninstalling first. Either way, your backup key and settings stay.
+Open Anchor and choose **Menu → Check for updates…**, then **Update**:
+
+- **Windows:** Anchor downloads the new version, closes, installs it in the background and opens again by itself.
+- **Linux, installed from the `.deb`:** the same, after asking for your computer's password once.
+- **Linux, installed with `install.sh`:** it opens the download page instead. Install the new version over the old one, without uninstalling first.
+
+Your backup key and settings always stay.
 
 To uninstall later, see [Removing Anchor from the computer](#removing-anchor-from-the-computer).
 
