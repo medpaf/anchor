@@ -14,7 +14,7 @@ Most conventional app blockers stop working the moment you really want to open a
 
 Each app can also have its own **schedule**, for example YouTube hidden every night from 22:30 to 07:00, or Instagram during work hours. The phone follows it on its own, even when it isn't connected. The **Never allow** list keeps certain selected apps from being installed at all. By default, it starts with the major social media apps (TikTok, Instagram, Threads, Facebook, Reddit, YouTube, Snapchat, X, Pinterest, Tumblr); Messenger and WhatsApp aren't on it.
 
-> **This is the free version, and it is locked to one phone.** Each computer works with a single phone. See [Free version: one phone](#free-version).
+> **This is the free version, and it is locked to one phone.** Each computer works with a single phone. See [Free version](#free-version).
 
 ## Contents
 
