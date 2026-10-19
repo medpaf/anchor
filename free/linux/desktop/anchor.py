@@ -69,26 +69,12 @@ headerbar .subtitle { color: alpha(@window_fg_color, 0.5); }
 /* ---- Status bar ---- */
 .hero {
   padding: 18px 20px;
-  border-radius: 20px;
-  border: 1px solid alpha(white, 0.06);
-  background-image: linear-gradient(180deg, #17131F, #13101A);
-  box-shadow: 0 6px 18px alpha(black, 0.3);
+  border-radius: 18px;
+  background-color: #16121F;
+  box-shadow: 0 0 0 1px alpha(white, 0.06);
 }
-.hero.anchored {
-  border-color: alpha(#8B5CF6, 0.32);
-  background-image: linear-gradient(100deg, alpha(#7C3AED, 0.16), alpha(#7C3AED, 0.04) 60%),
-                    linear-gradient(180deg, #19141F, #13101A);
-  box-shadow: 0 6px 18px alpha(black, 0.3);
-}
-.hero-title { font-size: 1.45em; font-weight: 800; letter-spacing: -0.2px; }
+.hero-title { font-size: 1.3em; font-weight: 700; }
 .hero-subtitle { color: alpha(@window_fg_color, 0.6); font-size: 0.93em; }
-.chip {
-  font-size: 0.68em; font-weight: 800; letter-spacing: 1.4px;
-  padding: 2px 10px; border-radius: 999px;
-  color: alpha(@window_fg_color, 0.55);
-  background-color: alpha(white, 0.06);
-}
-.hero.anchored .chip { color: #DCD0FF; background-color: alpha(#8B5CF6, 0.24); }
 
 /* ---- Buttons ---- */
 .cta {
@@ -456,10 +442,7 @@ class AnchorWindow(Adw.ApplicationWindow):
         self.hero.append(self.hero_icon)
 
         text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3, hexpand=True, valign=Gtk.Align.CENTER)
-        self.hero_chip = Gtk.Label(halign=Gtk.Align.START)
-        self.hero_chip.add_css_class("chip")
-        text.append(self.hero_chip)
-        self.hero_title = Gtk.Label(xalign=0, margin_top=3)
+        self.hero_title = Gtk.Label(xalign=0)
         self.hero_title.add_css_class("hero-title")
         text.append(self.hero_title)
         self.hero_subtitle = Gtk.Label(wrap=True, xalign=0, max_width_chars=38)
@@ -1247,7 +1230,6 @@ class AnchorWindow(Adw.ApplicationWindow):
         scheduled_now = st.get("scheduled_now", {})
         n = len(self.selected)
         anchored = n > 0
-        hidden_count = len(st.get("blocked", []))
         on_schedule = ""
         if scheduled_now:
             names = sorted(self.rows[p].label if p in self.rows else p for p in scheduled_now)
@@ -1260,12 +1242,9 @@ class AnchorWindow(Adw.ApplicationWindow):
         if anchored or scheduled_now:
             self.hero.add_css_class("anchored")
             self.hero_icon.set_from_icon_name("anchor-orb-on")
-            self.hero_chip.set_label((("●  ANCHORED" if anchored else "●  ON SCHEDULE") +
-                                      f"  ·  {plural(hidden_count, 'app')}").upper())
         else:
             self.hero.remove_css_class("anchored")
             self.hero_icon.set_from_icon_name("anchor-orb-off")
-            self.hero_chip.set_label("NOT ANCHORED")
         if anchored:
             if mode == "timer":
                 self.hero_title.set_label(f"Anchored until {clock(ends)}")

@@ -20,7 +20,6 @@ from PySide6.QtWidgets import QApplication, QPlainTextEdit, QPushButton  # noqa:
 
 import anchor  # noqa: E402
 import platform_support as plat  # noqa: E402
-import theme  # noqa: E402
 import widgets  # noqa: E402
 
 REAL_ERROR_DIALOG = anchor.AnchorWindow.error_dialog
@@ -269,7 +268,7 @@ class GuiTest(unittest.TestCase):
         self.open(self.ready_phone())
         self.wait_page("main")
         self.assertEqual(self.win.hero_title.text(), "Not anchored")
-        self.assertEqual(self.win.hero_chip.text(), "NOT ANCHORED")
+        self.assertEqual(self.win.hero_title.text(), "Not anchored")
         self.assertFalse(shown(self.win.hero_button), "nothing to release")
         self.assertEqual({r.anchor_button.text() for r in self.win.rows.values()}, {"Anchor"})
         self.assertFalse(shown(self.win.picked_section), "no empty Anchored section")
@@ -288,8 +287,7 @@ class GuiTest(unittest.TestCase):
         self.assertEqual(self.win.picked_section.title_label.text(), "Anchored apps (1)")
         self.assertEqual(self.win.hero_title.text(), "Anchored")
         self.assertEqual(self.win.hero_button.text(), "Release all")
-        self.assertTrue(self.win.hero.property("anchored"), "the card is tinted while anchored")
-        self.assertIn('#hero[anchored="true"]', theme.STYLE, "and the style sheet styles that")
+        self.assertTrue(self.win.hero.property("anchored"), "the logo lights up while anchored")
         self.assertEqual(self.toasts[-1], "Instagram anchored: hidden from your phone")
 
     def test_release_one_app(self):

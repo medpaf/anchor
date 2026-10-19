@@ -392,8 +392,6 @@ class AnchorWindow(QMainWindow):
         hero.addWidget(self.hero_icon, 0, 0, Qt.AlignVCenter)
         text = QVBoxLayout()
         text.setSpacing(3)
-        self.hero_chip = w.label("", "chip")
-        text.addWidget(self.hero_chip, 0, Qt.AlignLeft)
         self.hero_title = w.label("", "heroTitle")
         text.addSpacing(3)
         text.addWidget(self.hero_title)
@@ -410,7 +408,6 @@ class AnchorWindow(QMainWindow):
         actions.addWidget(self.pause_button, 0, Qt.AlignHCenter)
         hero.addLayout(actions, 0, 2, Qt.AlignVCenter)
         self.hero_narrow = False
-        w.shadow(self.hero, 30, 80, 6)
         lay.addWidget(self.hero)
 
         self.search = QLineEdit()
@@ -1139,7 +1136,6 @@ class AnchorWindow(QMainWindow):
         scheduled_now = st.get("scheduled_now", {})
         n = len(self.selected)
         anchored = n > 0
-        hidden_count = len(st.get("blocked", []))
         on_schedule = ""
         if scheduled_now:
             names = sorted(self.rows[p].label if p in self.rows else p for p in scheduled_now)
@@ -1151,13 +1147,7 @@ class AnchorWindow(QMainWindow):
         self.pause_button.setVisible(bool(scheduled_now) and not anchored)
         lit = anchored or bool(scheduled_now)
         w.set_flag(self.hero, "anchored", lit)
-        w.set_flag(self.hero_chip, "anchored", lit)
         self.hero_icon.setPixmap(w.picture("anchor-orb-on.svg" if lit else "anchor-orb-off.svg", 60))
-        if lit:
-            self.hero_chip.setText((("●  ANCHORED" if anchored else "●  ON SCHEDULE") +
-                                    f"  ·  {plural(hidden_count, 'app')}").upper())
-        else:
-            self.hero_chip.setText("NOT ANCHORED")
         if anchored:
             if mode == "timer":
                 self.hero_title.setText(f"Anchored until {clock(ends)}")

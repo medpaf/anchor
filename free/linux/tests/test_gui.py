@@ -257,7 +257,7 @@ class GuiTest(unittest.TestCase):
         self.open(self.ready_phone())
         self.wait_page("main")
         self.assertEqual(self.win.hero_title.get_label(), "Not anchored")
-        self.assertEqual(self.win.hero_chip.get_label(), "NOT ANCHORED")
+        self.assertEqual(self.win.hero_title.get_label(), "Not anchored")
         self.assertFalse(self.win.hero_button.get_visible(), "nothing to release")
         self.assertEqual({r.anchor_button.get_label() for r in self.win.rows.values()}, {"Anchor"})
         self.assertFalse(self.win.picked_title.section.get_visible(), "no empty Anchored section")
@@ -276,8 +276,7 @@ class GuiTest(unittest.TestCase):
         self.assertEqual(self.win.picked_title.get_label(), "Anchored apps (1)")
         self.assertEqual(self.win.hero_title.get_label(), "Anchored")
         self.assertEqual(self.win.hero_button.get_label(), "Release all")
-        self.assertTrue(self.win.hero.has_css_class("anchored"), "the card is tinted while anchored")
-        self.assertIn(".hero.anchored", anchor.CSS, "and the CSS styles that class")
+        self.assertEqual(self.win.hero_icon.get_icon_name(), "anchor-orb-on", "the logo lights up while anchored")
         self.assertEqual(self.toasts[-1], "Instagram anchored: hidden from your phone")
 
     def test_release_one_app(self):

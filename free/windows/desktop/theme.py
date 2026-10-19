@@ -52,15 +52,9 @@ QScrollBar::add-line, QScrollBar::sub-line, QScrollBar::add-page, QScrollBar::su
 QScrollBar:horizontal {{ height: 0; }}
 
 /* ---- Status bar (hero) ---- */
-#hero {{ border-radius: 20px; border: 1px solid {BORDER};
-         background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #17131F, stop:1 #13101A); }}
-#hero[anchored="true"] {{ border: 1px solid rgba(139, 92, 246, 0.32);
-         background: qlineargradient(x1:0, y1:0, x2:1, y2:0.35, stop:0 #221934, stop:0.6 #18131F, stop:1 #15111C); }}
-#heroTitle {{ font-size: 21px; font-weight: 800; letter-spacing: -0.2px; }}
+#hero {{ border-radius: 18px; border: 1px solid {BORDER}; background: {CARD}; }}
+#heroTitle {{ font-size: 19px; font-weight: 700; }}
 #heroSubtitle {{ color: rgba(238, 234, 247, 0.6); font-size: 13px; }}
-#chip {{ font-size: 10px; font-weight: 800; letter-spacing: 1.4px; padding: 3px 10px; border-radius: 10px;
-         color: rgba(238, 234, 247, 0.55); background: rgba(255, 255, 255, 0.06); }}
-#chip[anchored="true"] {{ color: #DCD0FF; background: rgba(139, 92, 246, 0.24); }}
 
 /* ---- Buttons ---- */
 QPushButton {{ border: none; background: transparent; }}
