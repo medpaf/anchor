@@ -11,6 +11,9 @@
          blocked app when the user asks for it on the computer. -->
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
 
+    <!-- Ask for a fingerprint (or the phone's PIN) before showing Anchor's screen. -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+
     <!-- Screen time per app, for the details screens. Turned on by the computer over USB. -->
     <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" />
 

@@ -106,7 +106,7 @@ Plug in the phone and open Anchor. Find the app under Your apps (there's a searc
 
 You can unplug the phone whenever you want and everything stays blocked. The phone itself can never release anything.
 
-You can also anchor apps, add schedules and uninstall apps from the Anchor app on the phone. Releasing an app, or changing or removing a schedule, only works from the computer.
+You can also anchor apps, add schedules and uninstall apps from the Anchor app on the phone. Releasing an app, or changing or removing a schedule, only works from the computer. The phone app asks for your fingerprint (or your phone's PIN or pattern) each time you open it.
 
 <img src="docs/screenshots/main.png" width="600" alt="Anchor's main window: three apps anchored, and the rest of the phone's apps">
 
@@ -134,7 +134,7 @@ Click an app to see how long you used it today and over the last 7 days, its ver
 
 Apps also have an Uninstall button. If the app is on your Never allow list, it can't be installed again afterwards.
 
-Apps that came with the phone (like YouTube or Chrome) have Remove instead: Android keeps a copy, so they move to a Removed system apps list, where Restore brings one back. Anchor asks before removing or anchoring one of them, because some of the phone's features can depend on them. Only the computer can remove or restore them; the Anchor app on the phone can't. Core apps the phone needs (Phone, SMS, the launcher, Settings and the Play Store) can't be removed.
+Apps that came with the phone (like YouTube or Chrome) have Remove instead: Android keeps a copy, so they move to a Removed system apps list, where Restore brings one back. Anchor asks before removing or anchoring one of them, because some of the phone's features can depend on them. Only the computer can remove or restore them; the Anchor app on the phone just lists them under Removed system apps. Core apps the phone needs (Phone, SMS, the launcher, Settings and the Play Store) can't be removed.
 
 Android doesn't let anyone hide a few core apps (Phone, the default SMS app, the launcher and Settings). Anchor marks those as "Can't be hidden".
 

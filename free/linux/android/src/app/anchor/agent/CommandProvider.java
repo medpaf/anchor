@@ -49,7 +49,7 @@ import java.util.zip.ZipOutputStream;
  * every command that changes anything must carry the computer's key.
  */
 public class CommandProvider extends ContentProvider {
-    static final int VERSION = 40;
+    static final int VERSION = 42;
     private static final int SHELL_UID = 2000;
     private static final int ICON_PX = 96;
 

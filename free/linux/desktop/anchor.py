@@ -140,7 +140,7 @@ switch slider { background-color: #F4F0FF; }
 .row-anchor.release { background-image: none; background-color: alpha(white, 0.04); color: #E4DBFF;
                       box-shadow: inset 0 0 0 1px alpha(#A78BFA, 0.65); }
 .row-anchor.release:hover { background-color: alpha(#8B5CF6, 0.16); }
-.row-uninstall { border-radius: 999px; padding: 5px 12px; font-weight: 700; font-size: 0.88em;
+.row-uninstall { border-radius: 999px; padding: 5px 12px; font-weight: 800; font-size: 0.92em;
                  background: none; box-shadow: none; color: alpha(@window_fg_color, 0.45); }
 .row-uninstall:hover { color: #FCA5A5; background-color: alpha(#F87171, 0.12); }
 .pill-small.danger { color: #FECACA; box-shadow: inset 0 0 0 1px alpha(#F87171, 0.6); }

@@ -58,6 +58,10 @@ public class MainActivity extends Activity {
     private final List<View> searchable = new ArrayList<>();
     /** Each list's body (the part that folds), with how the user left it: folded or open. */
     private final List<Object[]> sections = new ArrayList<>();
+    /** The whole screen, hidden until Anchor is unlocked with a fingerprint or the phone's PIN. */
+    private View screen;
+    private boolean unlocked;
+    private boolean prompting;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -177,13 +181,65 @@ public class MainActivity extends Activity {
                 return insets;
             }
         });
+        screen = scroll;
         setContentView(scroll);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        refresh();
+        if (unlocked || !hasScreenLock()) {
+            unlocked = true;
+            screen.setVisibility(View.VISIBLE);
+            refresh();
+            return;
+        }
+        screen.setVisibility(View.INVISIBLE);  // nothing shows until the fingerprint (or PIN) is checked
+        if (!prompting) askToUnlock();
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if (!prompting) unlocked = false;  // leaving the app locks it again
+    }
+
+    /** Without a screen lock there's no fingerprint or PIN to check, so Anchor just opens. */
+    private boolean hasScreenLock() {
+        android.app.KeyguardManager km = getSystemService(android.app.KeyguardManager.class);
+        return km != null && km.isDeviceSecure();
+    }
+
+    /** Android's own prompt: a fingerprint, or the phone's PIN, pattern or password. Cancelling closes Anchor. */
+    @SuppressWarnings("deprecation")
+    private void askToUnlock() {
+        prompting = true;
+        android.hardware.biometrics.BiometricPrompt.Builder prompt =
+                new android.hardware.biometrics.BiometricPrompt.Builder(this)
+                        .setTitle("Unlock Anchor")
+                        .setSubtitle("Use your fingerprint, or your phone's PIN or pattern");
+        if (android.os.Build.VERSION.SDK_INT >= 30) {
+            prompt.setAllowedAuthenticators(android.hardware.biometrics.BiometricManager.Authenticators.BIOMETRIC_WEAK
+                    | android.hardware.biometrics.BiometricManager.Authenticators.DEVICE_CREDENTIAL);
+        } else {
+            prompt.setDeviceCredentialAllowed(true);
+        }
+        prompt.build().authenticate(new android.os.CancellationSignal(), getMainExecutor(),
+                new android.hardware.biometrics.BiometricPrompt.AuthenticationCallback() {
+                    @Override
+                    public void onAuthenticationSucceeded(android.hardware.biometrics.BiometricPrompt.AuthenticationResult r) {
+                        prompting = false;
+                        unlocked = true;
+                        screen.setVisibility(View.VISIBLE);
+                        refresh();
+                    }
+
+                    @Override
+                    public void onAuthenticationError(int code, CharSequence message) {
+                        prompting = false;
+                        finish();
+                    }
+                });
     }
 
     private void refresh() {
@@ -265,13 +321,33 @@ public class MainActivity extends Activity {
         }
         sortByName(others);
 
+        // Apps that came with the phone and were removed from the computer: shown here, but only the
+        // computer can bring them back, so there's no button.
+        List<String[]> removed = new ArrayList<>();
+        try {
+            org.json.JSONArray list = SystemApps.removed(this);
+            for (int i = 0; i < list.length(); i++) {
+                org.json.JSONObject app = list.getJSONObject(i);
+                removed.add(new String[]{app.getString("pkg"), app.getString("label"), app.getString("pkg")});
+            }
+        } catch (org.json.JSONException ignored) {
+        }
+        sortByName(removed);
+
+        // Same order as the desktop. Every section but Never allow only shows when it has apps.
         addSection("Never allow", "Apps that can't be installed.", "ic_block", never, false, false);
         if (!hidden.isEmpty()) {
             addSection("Anchored apps", "Hidden from this phone. Only your computer can release them.",
                     "ic_anchor", hidden, true, false);
         }
-        addSection(hidden.isEmpty() ? "Your apps" : "All other apps",
-                "Tap Anchor to hide an app from this phone right away.", "ic_grid", others, true, true);
+        if (!removed.isEmpty()) {
+            addSection("Removed system apps", "Came with this phone. Only your computer can bring them back.",
+                    "ic_delete", removed, true, false);
+        }
+        if (!others.isEmpty()) {
+            addSection(hidden.isEmpty() ? "Your apps" : "All other apps",
+                    "Tap Anchor to hide an app from this phone right away.", "ic_grid", others, true, true);
+        }
         filter();
     }
 

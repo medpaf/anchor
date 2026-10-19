@@ -89,7 +89,7 @@ QPushButton[kind="row-release"] {{ border-radius: 15px; padding: 5px 0; font-wei
                                   color: {SOFT}; background: rgba(255, 255, 255, 0.04);
                                   border: 1px solid rgba(167, 139, 250, 0.65); }}
 QPushButton[kind="row-release"]:hover {{ background: rgba(139, 92, 246, 0.16); }}
-QPushButton[kind="row-uninstall"] {{ border-radius: 15px; padding: 6px 10px; font-weight: 700; font-size: 12px;
+QPushButton[kind="row-uninstall"] {{ border-radius: 15px; padding: 6px 10px; font-weight: 800; font-size: 13px;
                                     color: {FAINT}; }}
 QPushButton[kind="row-uninstall"]:hover {{ color: {ERROR}; background: rgba(248, 113, 113, 0.12); }}
 QPushButton[kind="pill"] {{ border-radius: 14px; padding: 5px 14px; font-weight: 700; font-size: 12px;
