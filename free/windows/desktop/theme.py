@@ -1,6 +1,7 @@
 """Anchor's look: deep violet-black with a violet accent, the same palette as the GTK app."""
 
 import sys
+from pathlib import Path
 
 BG = "#0D0A14"          # window
 CARD = "#16121F"        # cards and lists
@@ -30,6 +31,9 @@ if sys.platform == "win32":
 else:
     FONTS = ["Inter", "Cantarell", "Noto Sans", "sans-serif"]
     MONO = "JetBrains Mono, DejaVu Sans Mono, monospace"
+
+# The tick in ticked boxes (a path Qt's style sheets can read, also inside the packaged app)
+CHECK = (Path(__file__).resolve().parent / "icons" / "check.svg").as_posix()
 
 STYLE = f"""
 * {{ outline: none; }}
@@ -111,6 +115,12 @@ QPushButton[kind="dialog-suggested"]:hover {{ background: {GRADIENT_HOVER}; }}
 QPushButton[kind="dialog-destructive"] {{ border-radius: 12px; padding: 10px 18px; font-weight: 800;
                                          font-size: 14px; color: {ERROR}; background: rgba(248, 113, 113, 0.12); }}
 QPushButton[kind="dialog-destructive"]:hover {{ background: rgba(248, 113, 113, 0.2); }}
+
+/* Tick boxes (Never allow apps): a clear outline, violet with a white tick when ticked */
+QCheckBox {{ spacing: 0; }}
+QCheckBox::indicator {{ width: 16px; height: 16px; border-radius: 5px; border: 2px solid rgba(167, 139, 250, 0.65);
+                        background: transparent; }}
+QCheckBox::indicator:checked {{ border: 2px solid #8B5CF6; background: #7C3AED; image: url("{CHECK}"); }}
 
 /* ---- Search ---- */
 QLineEdit {{ min-height: 40px; border-radius: 14px; padding: 0 12px; background: {CARD};

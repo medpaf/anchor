@@ -17,8 +17,9 @@ sys.path.insert(0, str(HERE))
 
 from PySide6.QtCore import QObject, QPoint, QSize, Qt, QTimer, QUrl, Signal  # noqa: E402
 from PySide6.QtGui import QAction, QColor, QDesktopServices, QFont, QIcon, QPalette  # noqa: E402
-from PySide6.QtWidgets import (QApplication, QFrame, QGridLayout, QHBoxLayout, QLineEdit, QMainWindow, QMenu,  # noqa: E402
-                               QPlainTextEdit, QPushButton, QStackedWidget, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QApplication, QCheckBox, QFrame, QGridLayout, QHBoxLayout, QLineEdit,  # noqa: E402
+                               QMainWindow, QMenu, QPlainTextEdit, QPushButton, QStackedWidget, QVBoxLayout,
+                               QWidget)
 
 import adbclient as ac  # noqa: E402
 import catalog  # noqa: E402
@@ -684,9 +685,10 @@ class AnchorWindow(QMainWindow):
         d.present(self)
 
     def on_add_install_block(self):
-        d = w.AlertDialog(self, "Never allow an app",
-                          "It can't be used on your phone, even if you install it, until you release "
-                          "it here. If it's on your phone, Anchor asks before uninstalling it.", width=440)
+        d = w.AlertDialog(self, "Never allow apps",
+                          "Tick the apps, or paste a Play Store link. They can't be used on your phone, even "
+                          "if installed, until you release them here. If one is on your phone, Anchor asks "
+                          "before uninstalling it.", width=440)
         content = QWidget()
         lay = QVBoxLayout(content)
         lay.setContentsMargins(0, 0, 0, 0)
@@ -697,16 +699,17 @@ class AnchorWindow(QMainWindow):
         lay.addWidget(entry)
         have = {a["pkg"] for a in self.install_blocks}
         options = [(p, n) for p, n in catalog.SOCIAL + catalog.SUGGESTIONS if p not in have]
+        d.picks = {}  # pkg -> (name, tick box)
         if options:
             lay.addWidget(w.label("Suggestions", "captionHeading"))
             card = w.Card()
             for pkg, name in options:
-                row = w.Row(name, pkg)
-                add = w.icon_button("add", f"Add {name}", color=theme.LILAC)
-                add.clicked.connect(lambda _c=False, p=pkg, n=name: (
-                    d.close_overlay(), self.add_install_blocks([{"pkg": p, "name": n}])))
-                row.add_suffix(add)
-                row.add_button = add
+                tick = QCheckBox()
+                tick.setToolTip(f"Choose {name}")
+                tick.setCursor(Qt.PointingHandCursor)
+                row = w.Row(name, pkg, prefix=tick, clickable=True)
+                row.activated.connect(tick.toggle)  # clicking the row ticks it
+                d.picks[pkg] = (name, tick)
                 card.add(row)
             area = w.scroller(card)
             area.setMaximumHeight(260)
@@ -722,15 +725,20 @@ class AnchorWindow(QMainWindow):
         d.entry = entry
 
         def response(_d, rid):
-            if rid != "add" or not entry.text().strip():
+            if rid != "add":
                 return
-            try:
-                pkg = catalog.parse_app(entry.text())
-            except ValueError as e:
-                self.error_dialog("That doesn't look like an app", str(e))
-                return
-            labels = {r.pkg: r.label for r in self.rows.values()}
-            self.add_install_blocks([{"pkg": pkg, "name": catalog.name_for(pkg, labels)}])
+            apps = [{"pkg": pkg, "name": name} for pkg, (name, tick) in d.picks.items() if tick.isChecked()]
+            if entry.text().strip():
+                try:
+                    pkg = catalog.parse_app(entry.text())
+                except ValueError as e:
+                    self.error_dialog("That doesn't look like an app", str(e))
+                    return
+                labels = {r.pkg: r.label for r in self.rows.values()}
+                if pkg not in {a["pkg"] for a in apps}:
+                    apps.append({"pkg": pkg, "name": catalog.name_for(pkg, labels)})
+            if apps:
+                self.add_install_blocks(apps)
 
         d.connect("response", response)
         d.present(self)

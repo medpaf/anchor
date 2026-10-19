@@ -948,17 +948,50 @@ class GuiTest(unittest.TestCase):
         self.pump(lambda: "com.zhiliaoapp.musically" in self.win.rows, what="app back in the list")
         self.assertEqual(self.never_rows(), {})
 
-    def test_add_from_suggestions(self):
+    def test_add_several_suggestions_at_once(self):
         self.open(self.ready_phone())
         self.wait_page("main")
         self.win.on_add_install_block()
         d = self.dialogs[-1]
-        buttons = [b for b in d.get_extra_child().findChildren(QPushButton) if b.toolTip() == "Add TikTok"]
-        buttons[0].click()
-        self.pump(lambda: self.phone.install_blocks and not self.win.working, what="add")
-        self.assertEqual(self.phone.install_blocks, [{"pkg": "com.zhiliaoapp.musically", "name": "TikTok"}])
-        self.assertIn("TikTok added to Never allow", self.toasts)
-        self.pump(lambda: self.phone.placeholders == {"com.zhiliaoapp.musically"}, what="placeholder")
+        d.picks["com.zhiliaoapp.musically"][1].setChecked(True)
+        d.picks["com.snapchat.android"][1].setChecked(True)
+        d.emit("response", "add")
+        self.pump(lambda: len(self.phone.install_blocks) == 2 and not self.win.working, what="add")
+        self.assertEqual({a["pkg"] for a in self.phone.install_blocks}, {"com.zhiliaoapp.musically", "com.snapchat.android"})
+        self.assertIn("2 apps added to Never allow", self.toasts)
+        self.pump(lambda: self.phone.placeholders == {"com.zhiliaoapp.musically", "com.snapchat.android"}, what="placeholders")
+
+    def test_add_ticked_suggestions_and_a_link_together(self):
+        self.open(self.ready_phone())
+        self.wait_page("main")
+        self.win.on_add_install_block()
+        d = self.dialogs[-1]
+        d.picks["com.zhiliaoapp.musically"][1].setChecked(True)
+        d.entry.setText("https://play.google.com/store/apps/details?id=com.example.doomscroll")
+        d.emit("response", "add")
+        self.pump(lambda: len(self.phone.install_blocks) == 2 and not self.win.working, what="add")
+        self.assertEqual({a["pkg"] for a in self.phone.install_blocks}, {"com.zhiliaoapp.musically", "com.example.doomscroll"})
+
+    def test_add_with_nothing_chosen_does_nothing(self):
+        self.open(self.ready_phone())
+        self.wait_page("main")
+        self.win.on_add_install_block()
+        self.dialogs[-1].emit("response", "add")
+        self.pump(lambda: False, timeout=0.3, fail=False)
+        self.assertEqual(self.phone.install_blocks, [])
+        self.assertEqual(self.errors, [])
+
+    def test_clicking_a_suggestion_row_ticks_it(self):
+        self.open(self.ready_phone())
+        self.wait_page("main")
+        self.win.on_add_install_block()
+        d = self.dialogs[-1]
+        name, tick = d.picks["com.zhiliaoapp.musically"]
+        row = next(r for r in d.suggestions.rows if r.get_title() == name)
+        row.activated.emit()
+        self.assertTrue(tick.isChecked())
+        row.activated.emit()
+        self.assertFalse(tick.isChecked())
 
     def test_add_by_play_store_link(self):
         self.open(self.ready_phone())

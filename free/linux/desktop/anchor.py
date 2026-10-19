@@ -762,14 +762,16 @@ class AnchorWindow(Adw.ApplicationWindow):
         d.present(self)
 
     def on_add_install_block(self):
-        d = Adw.AlertDialog.new("Never allow an app",
-                                "It can't be used on your phone, even if you install it, until you release "
-                                "it here. If it's on your phone, Anchor asks before uninstalling it.")
+        d = Adw.AlertDialog.new("Never allow apps",
+                                "Tick the apps, or paste a Play Store link. They can't be used on your phone, "
+                                "even if installed, until you release them here. If one is on your phone, "
+                                "Anchor asks before uninstalling it.")
         content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
         entry = Gtk.Entry(placeholder_text="Play Store link or package name", activates_default=True)
         content.append(entry)
         have = {a["pkg"] for a in self.install_blocks}
         options = [(p, n) for p, n in catalog.SOCIAL + catalog.SUGGESTIONS if p not in have]
+        d.picks = {}  # pkg -> (name, tick box)
         if options:
             label = Gtk.Label(label="Suggestions", xalign=0)
             label.add_css_class("caption-heading")
@@ -778,12 +780,10 @@ class AnchorWindow(Adw.ApplicationWindow):
             suggestions.add_css_class("boxed-list")
             for pkg, name in options:
                 row = Adw.ActionRow(title=name, subtitle=pkg)
-                add = Gtk.Button(icon_name="list-add-symbolic", valign=Gtk.Align.CENTER, tooltip_text=f"Add {name}")
-                add.add_css_class("flat")
-                add.connect("clicked", lambda _b, p=pkg, n=name: (self.add_install_blocks([{"pkg": p, "name": n}]),
-                                                                   d.close()))
-                row.add_suffix(add)
-                row.set_activatable_widget(add)
+                tick = Gtk.CheckButton(valign=Gtk.Align.CENTER, tooltip_text=f"Choose {name}")
+                row.add_prefix(tick)
+                row.set_activatable_widget(tick)  # clicking the row ticks it
+                d.picks[pkg] = (name, tick)
                 suggestions.append(row)
             scroller = Gtk.ScrolledWindow(hscrollbar_policy=Gtk.PolicyType.NEVER, max_content_height=260,
                                           propagate_natural_height=True)
@@ -798,15 +798,20 @@ class AnchorWindow(Adw.ApplicationWindow):
         d.entry = entry
 
         def response(_d, rid):
-            if rid != "add" or not entry.get_text().strip():
+            if rid != "add":
                 return
-            try:
-                pkg = catalog.parse_app(entry.get_text())
-            except ValueError as e:
-                self.error_dialog("That doesn't look like an app", str(e))
-                return
-            labels = {r.pkg: r.label for r in self.rows.values()}
-            self.add_install_blocks([{"pkg": pkg, "name": catalog.name_for(pkg, labels)}])
+            apps = [{"pkg": pkg, "name": name} for pkg, (name, tick) in d.picks.items() if tick.get_active()]
+            if entry.get_text().strip():
+                try:
+                    pkg = catalog.parse_app(entry.get_text())
+                except ValueError as e:
+                    self.error_dialog("That doesn't look like an app", str(e))
+                    return
+                labels = {r.pkg: r.label for r in self.rows.values()}
+                if pkg not in {a["pkg"] for a in apps}:
+                    apps.append({"pkg": pkg, "name": catalog.name_for(pkg, labels)})
+            if apps:
+                self.add_install_blocks(apps)
 
         d.connect("response", response)
         d.present(self)
