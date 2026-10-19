@@ -219,7 +219,7 @@ anywhere.
 
 Contributions are welcome. Open an issue or pull request, or get in touch at [pafmed@protonmail.com](mailto:pafmed@protonmail.com).
 
-By contributing, you agree that your contribution is released under the GPL-3.0 license and may also be used in a paid version of Anchor.
+By contributing, you agree that your contribution is released under the GPL-3.0 license and may also be used in a paid version of Anchor, if that ends up happening.
 
 ## Donations
 
