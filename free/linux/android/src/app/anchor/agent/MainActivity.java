@@ -71,7 +71,19 @@ public class MainActivity extends Activity {
         root.setBackgroundColor(BG);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setGravity(Gravity.CENTER_HORIZONTAL);
-        root.setPadding(dp(16), dp(40), dp(16), dp(32));
+        root.setPadding(dp(16), dp(28), dp(16), dp(32));
+
+        // The menu, top right like the desktop's: Buy me a coffee (free version) and About.
+        final ImageView menu = iconButton("ic_menu", TEXT, false, "Menu", null);
+        menu.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showMenu(menu);
+            }
+        });
+        LinearLayout.LayoutParams menuLp = new LinearLayout.LayoutParams(dp(42), dp(42));
+        menuLp.gravity = Gravity.END;
+        root.addView(menu, menuLp);
 
         ImageView icon = new ImageView(this);
         // Just the orb (the icon's foreground layer), like the emblem in the desktop app.
@@ -146,9 +158,9 @@ public class MainActivity extends Activity {
         scroll.setBackgroundColor(BG);
         scroll.setFillViewport(true);
         scroll.addView(root);
-        // Android 15+ draws apps edge to edge, under the status bar: keep the content clear of the
-        // status bar at the top and the navigation bar at the bottom.
-        final LinearLayout content = root;
+        // Android 15+ draws apps edge to edge, under the status bar. The scroll view itself keeps
+        // clear of the status and navigation bars, so the list never scrolls under them and the
+        // bars stay solid (the window's own background shows there).
         scroll.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
             @Override
             public android.view.WindowInsets onApplyWindowInsets(View v, android.view.WindowInsets insets) {
@@ -161,7 +173,7 @@ public class MainActivity extends Activity {
                     top = insets.getSystemWindowInsetTop();
                     bottom = insets.getSystemWindowInsetBottom();
                 }
-                content.setPadding(dp(16), top + dp(28), dp(16), bottom + dp(32));
+                v.setPadding(0, top, 0, bottom);
                 return insets;
             }
         });
@@ -438,6 +450,70 @@ public class MainActivity extends Activity {
                 });
     }
 
+    private void showMenu(View anchor) {
+        android.widget.PopupMenu popup = new android.widget.PopupMenu(
+                new android.view.ContextThemeWrapper(this, android.R.style.Theme_DeviceDefault), anchor);
+        final int donate = 1, about = 2;
+        if (Edition.DONATE_URL != null) popup.getMenu().add(0, donate, 0, "Buy me a coffee…");
+        popup.getMenu().add(0, about, 1, "About Anchor");
+        popup.setOnMenuItemClickListener(new android.widget.PopupMenu.OnMenuItemClickListener() {
+            @Override
+            public boolean onMenuItemClick(android.view.MenuItem item) {
+                if (item.getItemId() == donate) openLink(Edition.DONATE_URL);
+                if (item.getItemId() == about) showAbout();
+                return true;
+            }
+        });
+        popup.show();
+    }
+
+    /** Like the desktop's About: logo, edition, what it does, who made it and a link to GitHub. */
+    private void showAbout() {
+        final android.app.Dialog dialog = new android.app.Dialog(this);
+        LinearLayout box = dialogBox();
+        ImageView logo = new ImageView(this);
+        int orb = getResources().getIdentifier("ic_fg", "drawable", getPackageName());
+        if (orb != 0) logo.setImageDrawable(getDrawable(orb));
+        box.addView(logo, new LinearLayout.LayoutParams(dp(112), dp(112)));
+        box.addView(dialogHeading(Edition.NAME), centered(dp(4)));
+        box.addView(dialogText("Block distracting apps on your Android phone. Only your computer can unblock them."),
+                centered(dp(10)));
+        TextView by = groupTitle("Developed by");
+        box.addView(by, fill(dp(20)));
+        LinearLayout credits = new LinearLayout(this);
+        credits.setOrientation(LinearLayout.VERTICAL);
+        credits.setBackground(cardWithBorder(CARD, 0x0FFFFFFF, dp(16)));
+        credits.addView(twoLines("Paulo Medeiros", "", TEXT), new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        credits.getChildAt(0).setPadding(dp(14), dp(12), dp(14), dp(12));
+        box.addView(credits, fill(dp(8)));
+
+        Button site = pillButton("GitHub repository", false);
+        site.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                openLink(Edition.WEBSITE);
+            }
+        });
+        Button back = pillButton("Back", false);
+        back.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                dialog.dismiss();
+            }
+        });
+        box.addView(twoButtons(back, site), fill(dp(22)));
+        showDialog(dialog, box);
+    }
+
+    private void openLink(String url) {
+        try {
+            startActivity(new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url)));
+        } catch (android.content.ActivityNotFoundException e) {
+            Toast.makeText(this, "No browser to open " + url, Toast.LENGTH_LONG).show();
+        }
+    }
+
     /** An app's details and permissions, like the desktop's details window. */
     private void showDetails(final String pkg, final String name) {
         final org.json.JSONObject info;
@@ -503,7 +579,7 @@ public class MainActivity extends Activity {
             box.addView(uninstall, fill(dp(24)));
         }
 
-        Button done = pillButton("Done", false);
+        Button done = pillButton("Back", false);
         done.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -959,6 +1035,7 @@ public class MainActivity extends Activity {
             w.setNavigationBarColor(BG);
         }
         padded.setPadding(dp(16), dp(28), dp(16), dp(24));
+        // Like the main screen: the scroll view keeps clear of the bars, so they stay solid.
         content.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
             @Override
             public android.view.WindowInsets onApplyWindowInsets(View v, android.view.WindowInsets insets) {
@@ -971,7 +1048,7 @@ public class MainActivity extends Activity {
                     top = insets.getSystemWindowInsetTop();
                     bottom = insets.getSystemWindowInsetBottom();
                 }
-                padded.setPadding(dp(16), top + dp(28), dp(16), bottom + dp(24));
+                v.setPadding(0, top, 0, bottom);
                 return insets;
             }
         });
@@ -985,12 +1062,14 @@ public class MainActivity extends Activity {
         b.setContentDescription(description);
         if (accent) b.setBackground(rounded(0x298B5CF6, dp(99)));
         b.setClickable(true);
-        b.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                onClick.run();
-            }
-        });
+        if (onClick != null) {
+            b.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    onClick.run();
+                }
+            });
+        }
         return b;
     }
 
