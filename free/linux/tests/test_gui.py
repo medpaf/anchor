@@ -464,6 +464,19 @@ class GuiTest(unittest.TestCase):
         self.assertIn(INSTAGRAM, phone.apps)
         self.assertIn(YOUTUBE, phone.apps)
 
+    def test_details_have_uninstall_at_the_bottom(self):
+        phone = self.ready_phone()
+        self.open(phone)
+        self.wait_page("main")
+        self.win.open_app_details({"pkg": YOUTUBE, "label": "YouTube"})
+        self.assertIsNone(self.win.details.uninstall, "not for apps that came with the phone")
+        self.win.open_app_details({"pkg": INSTAGRAM, "label": "Instagram"})
+        self.win.details.uninstall.emit("clicked")
+        self.assertEqual(self.dialogs[-1].get_heading(), "Uninstall Instagram?")
+        self.dialogs[-1].emit("response", "uninstall")
+        self.pump(lambda: INSTAGRAM not in self.win.rows, what="uninstall")
+        self.assertNotIn(INSTAGRAM, phone.apps)
+
     def test_uninstall_needs_confirmation_in_the_list(self):
         phone = self.ready_phone()
         self.open(phone)

@@ -1423,6 +1423,17 @@ class AnchorWindow(Adw.ApplicationWindow):
         page.add(about)
         perms = Adw.PreferencesGroup(title="Permissions")
         page.add(perms)
+        d.uninstall = None
+        row = self.rows.get(pkg)
+        if row and row.uninstall_button:  # apps you installed yourself, like the Uninstall in the list
+            d.uninstall = Gtk.Button(label="Uninstall", halign=Gtk.Align.CENTER,
+                                     tooltip_text=f"Uninstall {label} from your phone")
+            d.uninstall.add_css_class("pill-small")
+            d.uninstall.add_css_class("danger")
+            d.uninstall.connect("clicked", lambda _b: (d.close(), self.on_uninstall_app(app)))
+            bottom = Adw.PreferencesGroup()
+            bottom.add(d.uninstall)
+            page.add(bottom)
         loading = Adw.ActionRow(title="Loading…")
         loading.add_suffix(Gtk.Spinner(spinning=True))
         about.add(loading)

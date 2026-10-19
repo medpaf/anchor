@@ -1301,6 +1301,12 @@ class AnchorWindow(QMainWindow):
         d.perms = w.Group("Permissions")
         d.body.addWidget(d.about)
         d.body.addWidget(d.perms)
+        d.uninstall = None
+        row = self.rows.get(pkg)
+        if row and row.uninstall_button:  # apps you installed yourself, like the Uninstall in the list
+            d.uninstall = w.button("Uninstall", "pill-danger", f"Uninstall {label} from your phone",
+                                   lambda: (d.close_overlay(), self.on_uninstall_app(app)))
+            d.body.addWidget(d.uninstall, 0, Qt.AlignHCenter)
         d.body.addStretch(1)
         loading = w.Row("Loading…")
         loading.add_suffix(w.Spinner(20))

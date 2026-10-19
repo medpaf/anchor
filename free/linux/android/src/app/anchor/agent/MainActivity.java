@@ -491,6 +491,18 @@ public class MainActivity extends Activity {
         box.addView(perms, fill(dp(8)));
         fillPermissions(perms, permsNote, pkg, name, info);
 
+        if (canUninstall(pkg)) {  // apps you installed yourself, like the bin in the list
+            Button uninstall = dangerButton("Uninstall");
+            uninstall.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    dialog.dismiss();
+                    confirmUninstall(pkg, name);
+                }
+            });
+            box.addView(uninstall, fill(dp(24)));
+        }
+
         Button done = pillButton("Done", false);
         done.setOnClickListener(new View.OnClickListener() {
             @Override
