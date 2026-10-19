@@ -31,7 +31,7 @@ You can also give an app a schedule, like YouTube hidden every night from 22:30 
   - [Removing Anchor from the phone](#removing-anchor-from-the-phone)
   - [Removing Anchor from the computer](#removing-anchor-from-the-computer)
 + [Privacy](#privacy)
-+ [Contribution](#contribution)
++ [Feedback](#feedback)
 + [Donations](#donations)
 + [License](#license)
 
@@ -159,7 +159,6 @@ Remove Anchor from the phone first. Uninstalling the desktop app on Linux delete
 On Linux, open Anchor and go to Menu → Uninstall Anchor from this computer…. It deletes the key, asks for your password and removes the app.
 
 On Windows, go to Settings → Apps → Installed apps, find Anchor and click Uninstall. The key stays in `%APPDATA%\Anchor`, so a reinstall picks up where you left off. Delete that folder too if you're done with Anchor for good.
-
 
 ## Privacy
 
