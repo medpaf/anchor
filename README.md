@@ -43,7 +43,7 @@ The desktop app talks to your phone over the USB data cable. During setup it ins
 
 When you anchor an app, the companion app:
 
-- hides it from the home screen, the app drawer and Settings
+- hides it from the home screen and the app drawer (on Android 16 and newer it may still be listed in Settings → Apps, but it can't be opened)
 - suspends it, so it can't run or show notifications
 - revokes its permissions (camera, microphone, location, contacts, photos, notifications, etc.) and locks them; they're restored exactly as they were when the app is released
 - blocks uninstalling it, so you can't delete it and reinstall it from the Play Store
@@ -130,7 +130,9 @@ There's a helper in the desktop itself that will guide you through these simple 
 Plug in the phone and open Anchor. Find an app under "Your apps" (there's a search box) and click **Anchor** — it disappears from the phone right away and moves to "Anchored apps". **Release** brings back one app; **Release all**, brings back everything.
 
 Apps on your **Never allow** list show up in the phone's settings as "Blocked by Anchor": these are
-Anchor's tiny placeholders that stop them from being installed. Anchored apps are hidden completely.
+Anchor's tiny placeholders that stop them from being installed.
+
+Anchored apps disappear from the home screen and the app drawer. On Android 16 and newer, Settings → Apps may still list them, but they can't be opened, uninstalled or brought back from there. Older Android versions usually hide them from Settings too.
 
 You can unplug the phone whenever you want — everything stays blocked. The phone app can never release anything.
 
