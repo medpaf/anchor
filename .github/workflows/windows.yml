@@ -38,7 +38,18 @@ jobs:
         run: Set-Content -Path desktop/build-commit -Value $env:GITHUB_SHA -NoNewline -Encoding ascii
 
       - name: Test and build
-        run: ./build.ps1
+        run: ./build.ps1 *>&1 | Tee-Object -FilePath "$env:RUNNER_TEMP/build.log"
+
+      # Build logs are only visible to the repository's admins; an error note is public, so the end of
+      # the log is posted as one when the build fails.
+      - name: Show why the build failed
+        if: failure()
+        run: |
+          $log = "$env:RUNNER_TEMP/build.log"
+          if (Test-Path $log) {
+            $tail = (Get-Content $log -Tail 60) -join "%0A"
+            Write-Output "::error title=Windows build failed::$tail"
+          }
 
       - uses: actions/upload-artifact@v5
         with:

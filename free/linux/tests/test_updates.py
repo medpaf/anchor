@@ -2,6 +2,7 @@
 
 import io
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -69,7 +70,8 @@ class UpdatesTest(unittest.TestCase):
         self.assertEqual(path.read_bytes(), body)
         self.assertEqual(urlopen.call_args[0][0].full_url,
                          "https://github.com/medpaf/anchor/releases/download/linux/anchor-linux.deb")
-        self.assertEqual(path.parent.stat().st_mode & 0o777, 0o700, "a private folder")
+        if os.name != "nt":  # Windows has no Unix permissions (it reports 0o777); its temp folder is per-user
+            self.assertEqual(path.parent.stat().st_mode & 0o777, 0o700, "a private folder")
 
     def test_download_refuses_something_that_isnt_a_package(self):
         with mock.patch.object(updates.urllib.request, "urlopen", return_value=io.BytesIO(b"<html>Not Found</html>")):
