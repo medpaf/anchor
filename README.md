@@ -13,7 +13,7 @@
   <br>
 </p>
 
-Anchor is an app blocker for Android developed so that it could block the distracting apps without being able to umblock them from the phone itself. You pick the apps you want gone on your computer, and they simply disappear from your phone. To get them back, you have to plug the phone into that same computer (or another one with your backup key).
+Anchor is an app blocker for Android developed so that it could block the distracting apps without being able to unblock them from the phone itself. You pick the apps you want gone on your computer, and they simply disappear from your phone. To get them back, you have to plug the phone into that same computer (or another one with your backup key).
 
 Conventional app blockers have the same problem: turning them off takes only a few taps. With Anchor that's not an option. Having to go to the computer and plug in a cable is usually enough to stop the habit.
 
