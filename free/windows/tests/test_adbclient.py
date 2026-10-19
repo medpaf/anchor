@@ -166,6 +166,11 @@ class TimingCommandsTest(unittest.TestCase):
             agent_for(FakePhone().ready(TOKEN)).set_schedules("f" * 32, [])
         self.assertEqual(cm.exception.code, "bad_key")
 
+    def test_status_tells_the_phone_which_edition_this_is(self):
+        phone = FakePhone().ready(TOKEN)
+        agent_for(phone).status(TOKEN)
+        self.assertEqual(phone.edition, "free")
+
     def test_allow_background_runs_both_commands(self):
         adb = FakeAdb(FakePhone().ready(TOKEN))
         ac.Agent(adb, "S").allow_background()

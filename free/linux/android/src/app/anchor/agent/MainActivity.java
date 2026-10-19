@@ -454,12 +454,13 @@ public class MainActivity extends Activity {
         android.widget.PopupMenu popup = new android.widget.PopupMenu(
                 new android.view.ContextThemeWrapper(this, android.R.style.Theme_DeviceDefault), anchor);
         final int donate = 1, about = 2;
-        if (Edition.DONATE_URL != null) popup.getMenu().add(0, donate, 0, "Buy me a coffee…");
+        final String donateUrl = Edition.donateUrl(this);
+        if (donateUrl != null) popup.getMenu().add(0, donate, 0, "Buy me a coffee…");
         popup.getMenu().add(0, about, 1, "About Anchor");
         popup.setOnMenuItemClickListener(new android.widget.PopupMenu.OnMenuItemClickListener() {
             @Override
             public boolean onMenuItemClick(android.view.MenuItem item) {
-                if (item.getItemId() == donate) openLink(Edition.DONATE_URL);
+                if (item.getItemId() == donate) openLink(donateUrl);
                 if (item.getItemId() == about) showAbout();
                 return true;
             }
@@ -475,7 +476,7 @@ public class MainActivity extends Activity {
         int orb = getResources().getIdentifier("ic_fg", "drawable", getPackageName());
         if (orb != 0) logo.setImageDrawable(getDrawable(orb));
         box.addView(logo, new LinearLayout.LayoutParams(dp(112), dp(112)));
-        box.addView(dialogHeading(Edition.NAME), centered(dp(4)));
+        box.addView(dialogHeading(Edition.name(this)), centered(dp(4)));
         box.addView(dialogText("Block distracting apps on your Android phone. Only your computer can unblock them."),
                 centered(dp(10)));
         TextView by = groupTitle("Developed by");

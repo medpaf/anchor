@@ -69,6 +69,7 @@ class FakePhone:
         self.dpm_output = None  # set to simulate a `dpm set-device-owner` failure
         self.install_output = None  # set to simulate an `adb install` failure
         self.accounts = []  # (name, type, owning package) signed in on the phone
+        self.edition = "free"  # which desktop app last asked (the phone app shows its name)
         self.commands = []
 
     # ---- helpers for tests ----
@@ -187,6 +188,8 @@ class FakePhone:
             return None
 
         if method == "status":
+            if payload.get("edition") in ("free", "pro"):
+                self.edition = payload["edition"]
             res = self._status(token)
         elif method == "check":
             if not self.owner:

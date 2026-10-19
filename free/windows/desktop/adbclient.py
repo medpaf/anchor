@@ -16,7 +16,8 @@ import platform_support as plat
 AGENT_PKG = "app.anchor.agent"
 AGENT_ADMIN = f"{AGENT_PKG}/.AdminReceiver"
 AGENT_URI = "content://app.anchor.agent.cmd"
-AGENT_VERSION = 36  # must match CommandProvider.VERSION in the bundled APK
+AGENT_VERSION = 37  # must match CommandProvider.VERSION in the bundled APK
+EDITION = "free"  # the phone app is the same for free and Pro; it shows this edition's name
 
 
 class AdbError(Exception):
@@ -230,7 +231,7 @@ class Agent:
         return res
 
     def status(self, token):
-        return self.call("status", token=token)
+        return self.call("status", token=token, edition=EDITION)
 
     def pair(self, token):
         return self.call("pair", token=token)

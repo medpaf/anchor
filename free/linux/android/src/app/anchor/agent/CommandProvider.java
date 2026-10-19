@@ -49,7 +49,7 @@ import java.util.zip.ZipOutputStream;
  * every command that changes anything must carry the computer's key.
  */
 public class CommandProvider extends ContentProvider {
-    static final int VERSION = 36;
+    static final int VERSION = 37;
     private static final int SHELL_UID = 2000;
     private static final int ICON_PX = 96;
 
@@ -100,6 +100,8 @@ public class CommandProvider extends ContentProvider {
         String token = in.optString("token", "");
         switch (method) {
             case "status":
+                // {"edition": "free" | "pro"}: which desktop app is asking (see Edition).
+                Edition.remember(c, in.optString("edition", ""));
                 return status(c, token);
             case "pair":
                 requireOwner(c);
@@ -167,6 +169,17 @@ public class CommandProvider extends ContentProvider {
                 requireAuth(c, token);
                 InstallBlocks.uninstallCaught(c, in.getString("pkg"));
                 return status(c, token);
+            case "private_dns_unlock":
+                // Pro: just before the computer writes the phone's Private DNS setting over USB.
+                requireAuth(c, token);
+                PrivateDns.unlock(c);
+                return status(c, token);
+            case "private_dns_lock":
+                // Pro: {"host": "family.cloudflare-dns.com"} once written, or {"host": null} for the
+                // phone's own setting (unlocked).
+                requireAuth(c, token);
+                PrivateDns.lock(c, in.isNull("host") ? null : in.getString("host"));
+                return status(c, token);
             case "release":
                 requireAuth(c, token);
                 Core.release(c);
@@ -202,6 +215,8 @@ public class CommandProvider extends ContentProvider {
                 .put("install_placeholders", new JSONArray(InstallBlocks.placeholders(c)))
                 .put("install_missing", new JSONArray(InstallBlocks.missing(c)))
                 .put("permissions_removed", new JSONObject(Permissions.counts(c)))
+                .put("private_dns", PrivateDns.status(c))
+                .put("edition", Edition.get(c))
                 .put("exact_alarms", Core.canWakeExactly(c))
                 .put("version", VERSION)
                 .put("model", Build.MANUFACTURER + " " + Build.MODEL)
