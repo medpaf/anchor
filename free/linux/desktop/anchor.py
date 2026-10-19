@@ -1710,10 +1710,16 @@ class AnchorWindow(Adw.ApplicationWindow):
             if rid != "uninstall":
                 return
             agent, token, pkg = self.agent, self.keys.token, app["pkg"]
+            anchored, mode = set(self.selected), self.status.get("mode")
             self.working = True
 
             def work():
                 if app.get("system"):
+                    if pkg in anchored:  # Android can't remove a hidden app: release it first
+                        rest = anchored - {pkg}
+                        agent.select(token, rest)
+                        if not rest and mode is not None:
+                            agent.end_anchoring(token)
                     agent.remove_system_app(pkg)  # over USB: the phone app itself can't
                 else:
                     agent.uninstall_app(token, pkg)

@@ -295,8 +295,9 @@ class Agent:
             raise ValueError(f"Not a package name: {package}")
         out = self.shell(f"pm uninstall --user 0 {package}").strip()
         if "Success" not in out:
-            if "BLOCKED" in out:
-                raise AdbError("Anchor keeps anchored apps from being removed. Release it first, then remove it.")
+            if "BLOCKED" in out or "not installed for" in out:  # Android can't remove a hidden app
+                raise AdbError("It's hidden right now (anchored, or on its schedule). Release it, or wait for its "
+                               "schedule to end, then remove it.")
             raise AdbError(out or "The phone didn't remove it.")
 
     def restore_system_app(self, token, package):

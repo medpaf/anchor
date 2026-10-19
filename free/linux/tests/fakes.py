@@ -403,8 +403,8 @@ class FakeAdb(ac.Adb):
             pkg = m.group(1)
             if pkg not in ph.apps:
                 return "Failure [DELETE_FAILED_INTERNAL_ERROR]\n"
-            if pkg in ph.blocked:  # Anchor blocks uninstalling anchored apps
-                return "Failure [DELETE_FAILED_OWNER_BLOCKED]\n"
+            if pkg in ph.blocked:  # Android treats a hidden app as not installed
+                return "Failure [not installed for 0]\n"
             if pkg in ph.SYSTEM:
                 ph.removed[pkg] = ph.apps[pkg]
             del ph.apps[pkg]
