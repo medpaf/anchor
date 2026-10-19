@@ -896,10 +896,6 @@ class AnchorWindow(QMainWindow):
                 self.update_hero()
                 self.update_never_allow()
                 self.ensure_placeholders()
-                if not st.get("install_blocks_set", True):
-                    # First time with this phone: social media is on the 'Never allow' list by default.
-                    self.save_install_blocks(catalog.defaults(),
-                                             "Social media apps are now on your 'Never allow' list")
                 if any(not x.get("packages") for x in st.get("schedules", [])):
                     # Version 3 had schedules for the whole list; they're per app now.
                     self.save_schedules(self.schedules, "Old schedules were removed: schedules are now set per app")

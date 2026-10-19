@@ -40,10 +40,6 @@ KNOWN = dict(SOCIAL + SUGGESTIONS)
 _PACKAGE = re.compile(r"[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+")
 
 
-def defaults():
-    return [{"pkg": pkg, "name": name} for pkg, name in SOCIAL]
-
-
 def parse_app(text):
     """A package name from what the user typed: a package name or a Play Store link.
     Raises ValueError when it's neither."""

@@ -849,28 +849,14 @@ class GuiTest(unittest.TestCase):
     def never_rows(self):
         return {row.pkg: row for row in self.win.never_children if hasattr(row, "pkg")}
 
-    def test_social_media_blocked_by_default_on_first_connect(self):
+    def test_never_allow_starts_empty_on_first_connect(self):
         phone = self.ready_phone()
-        phone.install_blocks_set = False
+        phone.install_blocks_set = False  # a phone Anchor never set a list on
         self.open(phone)
         self.wait_page("main")
-        self.pump(lambda: phone.install_blocks and phone.placeholders and not self.win.placing, what="defaults")
-        pkgs = {a["pkg"] for a in phone.install_blocks}
-        self.assertIn("com.zhiliaoapp.musically", pkgs)
-        self.assertNotIn("com.facebook.orca", pkgs, "Messenger stays allowed")
-        self.assertIn("Social media apps are now on your 'Never allow' list", self.toasts)
-        # Every default app that isn't on the phone gets a placeholder, so it can't be installed.
-        self.assertEqual(phone.placeholders, pkgs - set(phone.apps))
-        self.assertFalse(phone.install("com.zhiliaoapp.musically", "TikTok"), "Android refuses the install")
-        self.pump(lambda: self.never_rows()["com.zhiliaoapp.musically"].get_subtitle() == "com.zhiliaoapp.musically",
-                  what="row update")
-        rows = self.never_rows()
-        # Already on the phone: left alone. Not on the phone: can't be installed.
-        self.assertIn("already on your phone", rows[INSTAGRAM].get_subtitle())
-        self.assertNotIn(INSTAGRAM, phone.blocked)
-        self.assertEqual(self.win.never_section.hint_label.text(), "Apps that can't be installed.")
-        self.assertEqual(self.win.never_section.title_label.text(), f"Never allow ({len(pkgs)})")
-
+        self.pump(lambda: False, timeout=0.5, fail=False)
+        self.assertEqual(phone.install_blocks, [], "nothing is added by itself")
+        self.assertEqual(phone.placeholders, set())
     def test_never_allow_starts_folded(self):
         self.open(self.ready_phone())
         self.wait_page("main")

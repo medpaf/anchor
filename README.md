@@ -12,7 +12,7 @@ Anchor is an app blocker for Android that you can't turn off from the phone. You
 
 With Anchor, having to go to the computer and plug in a cable is usually enough to stop the habit.
 
-You can also give an app a schedule, like YouTube hidden every night from 22:30 to 07:00, or Instagram during work hours. The phone takes care of that by itself, even when it's not plugged in. There's also a Never allow list for apps you don't want installed at all. By default, it starts with the big social media apps (TikTok, Instagram, Threads, Facebook, Reddit, YouTube, Snapchat, X, Pinterest, Tumblr) but you can change it to your specific needs.
+You can also give an app a schedule, like YouTube hidden every night from 22:30 to 07:00, or Instagram during work hours. The phone takes care of that by itself, even when it's not plugged in. There's also a Never allow list for apps you don't want installed at all. It starts empty: add the apps you want, or pick from suggestions like TikTok, Instagram and YouTube.
 
 > It works with one phone per computer.
 
@@ -112,7 +112,7 @@ You can also anchor apps, add schedules and uninstall apps from the Anchor app o
 
 ### Never allow
 
-Apps on this list can't be installed on the phone, whether from the Play Store or anywhere else. Click "Add an app…" to add one, either from the suggestions or by pasting a Play Store link or a package name. Click Release next to an app to take it off the list.
+Apps on this list can't be installed on the phone, whether from the Play Store or anywhere else. The list starts empty. Click "Add an app…" to add one, either from the suggestions or by pasting a Play Store link or a package name. If the app is already on your phone, Anchor asks before uninstalling it. Click Release next to an app to take it off the list.
 
 In the phone's settings, these apps show up as "Blocked by Anchor". Those are tiny placeholder apps Anchor installs to stop the real ones from being installed.
 
