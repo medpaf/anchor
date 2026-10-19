@@ -53,7 +53,8 @@ QScrollBar:horizontal {{ height: 0; }}
 
 /* ---- Status bar (hero) ---- */
 #hero {{ border-radius: 18px; border: 1px solid {BORDER}; background: {CARD}; }}
-#heroTitle {{ font-size: 19px; font-weight: 700; }}
+#hero[anchored="true"] {{ border: 1px solid rgba(139, 92, 246, 0.28); background: #1B1529; }}
+#heroTitle {{ font-size: 20px; font-weight: 800; }}
 #heroSubtitle {{ color: rgba(238, 234, 247, 0.6); font-size: 13px; }}
 
 /* ---- Buttons ---- */

@@ -73,7 +73,8 @@ headerbar .subtitle { color: alpha(@window_fg_color, 0.5); }
   background-color: #16121F;
   box-shadow: 0 0 0 1px alpha(white, 0.06);
 }
-.hero-title { font-size: 1.3em; font-weight: 700; }
+.hero.anchored { background-color: #1B1529; box-shadow: 0 0 0 1px alpha(#8B5CF6, 0.28); }
+.hero-title { font-size: 1.38em; font-weight: 800; }
 .hero-subtitle { color: alpha(@window_fg_color, 0.6); font-size: 0.93em; }
 
 /* ---- Buttons ---- */
