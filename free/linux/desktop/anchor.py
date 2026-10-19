@@ -96,7 +96,7 @@ headerbar .subtitle { color: alpha(@window_fg_color, 0.5); }
   font-size: 1.02em; font-weight: 800; letter-spacing: 0.2px;
   color: white;
   background-image: linear-gradient(135deg, #9B6DFF, #6D28D9);
-  box-shadow: 0 4px 14px alpha(#7C3AED, 0.35), inset 0 1px alpha(white, 0.22);
+  box-shadow: none;
   border: none;
 }
 .setup-cta { padding: 12px 48px; font-size: 1.1em; }
@@ -106,7 +106,7 @@ headerbar .subtitle { color: alpha(@window_fg_color, 0.5); }
                 color: alpha(white, 0.32); box-shadow: none; }
 .cta.release {
   background-image: none; background-color: alpha(white, 0.04);
-  color: #E4DBFF; box-shadow: inset 0 0 0 1.5px alpha(#A78BFA, 0.65);
+  color: #E4DBFF; box-shadow: inset 0 0 0 1px alpha(#A78BFA, 0.65);
 }
 .cta.release:hover { background-color: alpha(#8B5CF6, 0.16); }
 .link-button { color: #C4B5FD; font-weight: 700; font-size: 0.9em; border-radius: 999px;
@@ -147,10 +147,10 @@ switch slider { background-color: #F4F0FF; }
 .never-allow image { color: #C4B5FD; }
 .row-anchor { border-radius: 999px; padding: 5px 16px; font-weight: 800; font-size: 0.92em; color: white;
               background-image: linear-gradient(135deg, #9B6DFF, #6D28D9); border: none;
-              box-shadow: 0 2px 8px alpha(#7C3AED, 0.35); min-width: 64px; }
+              box-shadow: none; min-width: 64px; }
 .row-anchor:hover { background-image: linear-gradient(135deg, #AA82FF, #7C3AED); }
 .row-anchor.release { background-image: none; background-color: alpha(white, 0.04); color: #E4DBFF;
-                      box-shadow: inset 0 0 0 1.5px alpha(#A78BFA, 0.65); }
+                      box-shadow: inset 0 0 0 1px alpha(#A78BFA, 0.65); }
 .row-anchor.release:hover { background-color: alpha(#8B5CF6, 0.16); }
 .row-uninstall { border-radius: 999px; padding: 5px 12px; font-weight: 700; font-size: 0.88em;
                  background: none; box-shadow: none; color: alpha(@window_fg_color, 0.45); }
@@ -409,13 +409,6 @@ class AnchorWindow(Adw.ApplicationWindow):
         users.set_subtitle_lines(0)
         users.add_prefix(Gtk.Image(icon_name="system-users-symbolic"))
         before.add(users)
-        xiaomi = Adw.ActionRow(
-            title="Xiaomi, Redmi or POCO?",
-            subtitle="In Developer options also turn on “Install via USB” and "
-                     "“USB debugging (Security settings)”.")
-        xiaomi.set_subtitle_lines(0)
-        xiaomi.add_prefix(Gtk.Image(icon_name="dialog-information-symbolic"))
-        before.add(xiaomi)
         box.append(before)
 
         steps = Adw.PreferencesGroup(title="Steps")

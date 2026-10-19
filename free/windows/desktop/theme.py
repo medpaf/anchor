@@ -76,7 +76,7 @@ QPushButton[kind="cta-big"]:pressed {{ background: {GRADIENT_DOWN}; }}
 QPushButton[kind="cta-big"]:disabled {{ background: rgba(255, 255, 255, 0.06); color: rgba(255, 255, 255, 0.32); }}
 QPushButton[kind="release"] {{ padding: 9px 28px; border-radius: 19px; font-size: 14px; font-weight: 800;
                               color: {SOFT}; background: rgba(255, 255, 255, 0.04);
-                              border: 1.5px solid rgba(167, 139, 250, 0.65); }}
+                              border: 1px solid rgba(167, 139, 250, 0.65); }}
 QPushButton[kind="release"]:hover {{ background: rgba(139, 92, 246, 0.16); }}
 QPushButton[kind="release"]:disabled {{ color: rgba(255, 255, 255, 0.32); border-color: rgba(255, 255, 255, 0.1); }}
 QPushButton[kind="link"] {{ color: {LILAC}; font-weight: 700; font-size: 12px; border-radius: 12px;
@@ -88,7 +88,7 @@ QPushButton[kind="row-anchor"]:hover {{ background: {GRADIENT_HOVER}; }}
 QPushButton[kind="row-anchor"]:pressed {{ background: {GRADIENT_DOWN}; }}
 QPushButton[kind="row-release"] {{ border-radius: 15px; padding: 5px 0; font-weight: 800; font-size: 13px;
                                   color: {SOFT}; background: rgba(255, 255, 255, 0.04);
-                                  border: 1.5px solid rgba(167, 139, 250, 0.65); }}
+                                  border: 1px solid rgba(167, 139, 250, 0.65); }}
 QPushButton[kind="row-release"]:hover {{ background: rgba(139, 92, 246, 0.16); }}
 QPushButton[kind="row-uninstall"] {{ border-radius: 15px; padding: 6px 10px; font-weight: 700; font-size: 12px;
                                     color: {FAINT}; }}

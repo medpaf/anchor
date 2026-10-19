@@ -351,8 +351,6 @@ class AnchorWindow(QMainWindow):
              "with no accounts. Add them back right after setup."),
             ("group", "Remove extra users and work profiles",
              "Guest users, work profiles, “Second space” or “Dual apps” must go too."),
-            ("info", "Xiaomi, Redmi or POCO?",
-             "In Developer options also turn on “Install via USB” and “USB debugging (Security settings)”."),
         ]:
             before.add(w.Row(title, subtitle, prefix=w.image(w.symbol(icon, theme.DIM, 20)), subtitle_lines=0))
         lay.addWidget(before)
