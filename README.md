@@ -1,18 +1,23 @@
 # Anchor
 
-[![Made with Python](https://img.shields.io/badge/Made%20with-Python-1f425f.svg)](https://www.python.org/)
+[![made-with-python](https://img.shields.io/badge/Made%20with-Python-1f425f.svg)](https://www.python.org/)
+[![Size](https://img.shields.io/github/repo-size/medpaf/anchor)](https://github.com/medpaf/anchor)
+[![Linux](https://svgshare.com/i/Zhy.svg)](https://svgshare.com/i/Zhy.svg)
+[![Windows](https://svgshare.com/i/ZhY.svg)](https://svgshare.com/i/ZhY.svg)
 [![License: PolyForm Strict](https://img.shields.io/badge/License-PolyForm%20Strict-blue.svg)](LICENSE)
 
 <p align="center">
   <br>
   <img src="free/linux/desktop/icons/app.anchor.Desktop.svg" width="160" alt="Anchor logo">
+  <br>
+  <br>
 </p>
 
-Anchor is an app blocker for Android that you can't turn off from the phone. You pick the apps that distract you on your computer, and they disappear from your phone. To get them back, you have to plug the phone into that same computer (or another one with your backup key).
+Anchor is an app blocker for Android that I developed so that I could block the apps that distract me without being able to turn them off from the phone itself. You pick the apps you want gone on your computer, and they simply disappear from your phone. To get them back, you have to plug the phone into that same computer (or another one with your backup key).
 
-With Anchor, having to go to the computer and plug in a cable is usually enough to stop the habit.
+Every app blocker I tried had the same problem: the moment I really wanted to open Instagram, turning the blocker off took two taps. With Anchor that's not an option. Having to go to the computer and plug in a cable is usually enough to make me stop and think.
 
-You can also give an app a schedule, like YouTube hidden every night from 22:30 to 07:00, or Instagram during work hours. The phone takes care of that by itself, even when it's not plugged in. There's also a Never allow list for apps you don't want installed at all. It starts empty: add the apps you want, or pick from suggestions like TikTok, Instagram and YouTube.
+You can also give an app a **schedule** (like YouTube hidden every night from 22:30 to 07:00, or Instagram during work hours), which the phone enforces by itself even when it's not plugged in. There's also a **Never allow** list for apps you don't want installed at all, **per-app permissions**, **screen time** and more.
 
 > It works with one phone per computer.
 
@@ -21,6 +26,9 @@ You can also give an app a schedule, like YouTube hidden every night from 22:30 
 + [How it works](#how-it-works)
 + [Requirements](#requirements)
 + [Installation](#installation)
+  - [Linux](#linux)
+  - [Windows](#windows)
+  - [Updating](#updating)
 + [Setting up the phone](#setting-up-the-phone)
 + [How to use](#how-to-use)
   - [Anchoring apps](#anchoring-apps)
@@ -37,37 +45,35 @@ You can also give an app a schedule, like YouTube hidden every night from 22:30 
 
 ## How it works
 
-The desktop app talks to the phone over USB. During setup it puts a small companion app on the phone (about 25 KB, also called Anchor) and makes it the phone's device owner. That's the same thing companies use to manage work phones, and it's what makes the block stick: a device owner app can't be switched off or uninstalled from the phone.
+The desktop app communicates to the phone over USB. During setup it installs a small companion app on the phone (about 25 KB, also called Anchor) and makes it the phone's **device owner**. That's the same thing companies use to manage work phones, and it's what makes the block stick: a device owner app can't be turned off or uninstalled from the phone.
 
 When you anchor an app, the companion app hides it from the home screen and the app drawer, and suspends it so it can't run or send notifications. It also takes away all of its permissions (camera, microphone, location and so on) until you release it, and puts them back exactly how they were afterwards. It stops the app from being uninstalled, so you can't just delete it and reinstall it, and it stops new users or guests from being added so you can't install it in another profile either.
 
 Nothing gets deleted. The app's data and logins are still there when you release it.
 
-Anchored apps can still show up on your phone in Settings → Apps, but they can't be opened from there.
+Anchored apps can still show up on the phone in Settings → Apps, but they can't be opened from there.
 
-It only works with one phone per computer. Whichever phone you set up first is the one it keeps.
-
-If you want to switch phones, connect the current one and use Menu → Remove Anchor from phone. Everything comes back and you can set up the new phone.
+It only works with one phone per computer. Whichever phone you set up first is the one it keeps. If you want to switch phones, you just have to connect the current one and use Menu → Remove Anchor from phone. Everything comes back and you can set up the new phone.
 
 If your old phone was reset, lost or replaced, choose Forget when you set up the new one. Your computer gets a new backup key, so it can't control the old phone anymore. If the old phone still had apps anchored, they stay hidden until it's factory reset.
 
 ## Requirements
 
-On the computer you need Windows 10 or 11 (64-bit), or Linux with GTK 4, libadwaita 1.5 or newer and Python 3.10 (Ubuntu 24.04, Fedora 40, Arch or anything newer works). You also need a USB cable that carries data, not just power.
+On the computer you need **Windows 10 or 11** (64-bit), or **Linux** with GTK 4, libadwaita 1.5 or newer and Python 3.10 (Ubuntu 24.04, Fedora 40, Arch or anything newer works). You'll also need a USB cable that carries data, not just power.
 
-The phone needs Android 10 or newer, with USB debugging turned on.
+The phone needs **Android 10 or newer**, with USB debugging turned on.
 
 ## Installation
 
 ### Linux
 
-On Debian-based distros like Ubuntu, Linux Mint, Pop!_OS and others, download [anchor-linux.deb](https://github.com/medpaf/anchor/releases/download/linux/anchor-linux.deb) and install it. That also installs adb and everything else Anchor needs.
+On Debian-based distros (***Ubuntu***, ***Linux Mint***, ***Pop!_OS***, ***Debian***, etc.), download [anchor-linux.deb](https://github.com/medpaf/anchor/releases/download/linux/anchor-linux.deb) and install it. This also installs adb and everything else Anchor needs:
 
 ```
 sudo apt install ./anchor-linux.deb
 ```
 
-On any other Linux, download [anchor-linux.tar.gz](https://github.com/medpaf/anchor/releases/download/linux/anchor-linux.tar.gz), unpack it and run the installer:
+If you are using any other Linux distro, download [anchor-linux.tar.gz](https://github.com/medpaf/anchor/releases/download/linux/anchor-linux.tar.gz), unpack it and run the installer:
 
 ```
 tar -xzf anchor-linux.tar.gz
@@ -81,18 +87,16 @@ Download [anchor-win.exe](https://github.com/medpaf/anchor/releases/download/win
 
 ### Updating
 
-Go to Menu → Check for updates… and click Update.
+To update Anchor, just go to Menu → Check for updates… and click Update. Your backup key and settings are kept.
 
-Your backup key and settings are kept.
-
-To uninstall, see [Removing Anchor from the computer](#removing-anchor-from-the-computer).
+To uninstall it, see [Removing Anchor from the computer](#removing-anchor-from-the-computer).
 
 ## Setting up the phone
 
-1. Turn on USB debugging. Go to Settings → About phone and tap Build number 7 times, then go to Settings → System → Developer options and turn on USB debugging. On Xiaomi, Redmi and POCO phones, also turn on "Install via USB" and "USB debugging (Security settings)".
-2. Sign out of all accounts in Settings → Passwords & accounts (Google included). Android only lets you set a device owner on a phone with no accounts. Your data stays where it is, and you sign back in right after. Remove any guest user, work profile, Second space or Dual apps too.
-3. Plug the phone in and open Anchor. Tap Allow on the "Allow USB debugging?" prompt on the phone and tick "Always allow from this computer". Then click Set up phone.
-4. Sign back into your accounts. That's it.
+1. **Turn on USB debugging.** Go to Settings → About phone and tap Build number 7 times, then go to Settings → System → Developer options and turn on USB debugging. On Xiaomi, Redmi and POCO phones, also turn on "Install via USB" and "USB debugging (Security settings)".
+2. **Sign out of all accounts** in Settings → Passwords & accounts (Google included). Android only lets you set a device owner on a phone with no accounts. Your data stays where it is, and you sign back in right after. Remove any guest user, work profile, Second space or Dual apps too.
+3. **Plug the phone in and open Anchor.** Tap Allow on the "Allow USB debugging?" prompt on the phone and tick "Always allow from this computer". Then click Set up phone.
+4. **Sign back into your accounts.** That's it.
 
 The desktop app walks you through all of this.
 
@@ -112,7 +116,7 @@ You can also anchor apps, add schedules and uninstall apps from the Anchor app o
 
 ### Never allow
 
-Apps on this list can't be installed on the phone, whether from the Play Store or anywhere else. The list starts empty. Click "Add an app…" to add one, either from the suggestions or by pasting a Play Store link or a package name. If the app is already on your phone, Anchor asks before uninstalling it. Click Release next to an app to take it off the list.
+Apps on this list can't be installed on the phone, whether from the Play Store or anywhere else. The list starts empty. To add one, click "Add an app…" and pick it from the suggestions, or paste a Play Store link or a package name. If the app is already on your phone, Anchor asks before uninstalling it. To take an app off the list, click Release next to it.
 
 In the phone's settings, these apps show up as "Blocked by Anchor". Those are tiny placeholder apps Anchor installs to stop the real ones from being installed.
 
@@ -120,9 +124,9 @@ In the phone's settings, these apps show up as "Blocked by Anchor". Those are ti
 
 ### Schedules
 
-Click the clock next to an app, then "Add a time", and pick the days and the start and end times. If the end is earlier than the start, it runs past midnight. If they're the same, it lasts all day. An app can have more than one. Click a time to edit it, use its switch to turn it off for a while, or the bin to delete it.
+If you want an app hidden at certain times, click the clock next to it, then "Add a time", and pick the days and the start and end times. If the end is earlier than the start, it runs past midnight. If they're the same, it lasts all day. An app can have more than one. Click a time to edit it, use its switch to turn it off for a while, or the bin to delete it.
 
-While a schedule is on, the app says something like "Hidden by its schedule until 07:00", even if nothing else is anchored. To end one early, open the clock and switch the schedule off or delete it using the desktop app.
+While a schedule is on, the app says something like "Hidden by its schedule until 07:00", even if nothing else is anchored. To end one early, open the clock and switch the schedule off or delete it from the desktop app.
 
 <img src="docs/screenshots/schedule.png" width="600" alt="YouTube's schedule: hidden every day from 22:30 to 07:00">
 
@@ -144,7 +148,7 @@ Save a copy right after setting up your phone, somewhere you can't get to on a w
 
 If you lose both the computer and the key, the only way to get your apps back is a factory reset.
 
-> **Disclaimer:** Keeping your key safe is your responsibility. I'm not responsible if you lose it and can't release your apps anymore, or if you have to factory reset your phone (and lose its data) to get them back.
+**Disclaimer**: Keeping your key safe is your responsibility. I'm not responsible if you lose it and can't release your apps anymore, or if you have to factory reset your phone (and lose its data) to get them back.
 
 ### Removing Anchor from the phone
 
@@ -168,7 +172,7 @@ Your lists and schedules are stored on the phone. The computer only keeps its ke
 
 ## Feedback
 
-Feedbacks are welcome. Open an issue or email me at [pafmed@protonmail.com](mailto:pafmed@protonmail.com).
+Feedback is welcome. You can open an issue or send me an email at [pafmed@protonmail.com](mailto:pafmed@protonmail.com).
 
 ## Donations
 
@@ -176,6 +180,6 @@ Building it for both Linux and Windows took a lot of work. If it's useful to you
 
 ## License
 
-Anchor is source-available under the [PolyForm Strict License 1.0.0](LICENSE). You can download it, use it for free for anything non-commercial and read the code, but you can't change it, share it or sell it. Download it from this page instead of passing copies around.
+Anchor is source-available under the [**PolyForm Strict License 1.0.0**](LICENSE). You can download it, use it for free for anything non-commercial and read the code, but you can't change it, share it or sell it. Download it from this page instead of passing copies around.
 
 Copyright © 2026 Paulo Medeiros.
