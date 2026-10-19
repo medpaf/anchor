@@ -16,7 +16,7 @@ import platform_support as plat
 AGENT_PKG = "app.anchor.agent"
 AGENT_ADMIN = f"{AGENT_PKG}/.AdminReceiver"
 AGENT_URI = "content://app.anchor.agent.cmd"
-AGENT_VERSION = 39  # must match CommandProvider.VERSION in the bundled APK
+AGENT_VERSION = 40  # must match CommandProvider.VERSION in the bundled APK
 EDITION = "free"  # the phone app is the same for free and Pro; it shows this edition's name
 
 
@@ -280,6 +280,18 @@ class Agent:
     def uninstall_app(self, token, package):
         """Uninstalls an app the user picked (not system apps). Its data on the phone is deleted."""
         return self.call("uninstall", token=token, pkg=package)
+
+    def remove_system_app(self, package):
+        """Removes an app that came with the phone for the phone's user. Only the USB connection can:
+        the phone app's own uninstall would only take away its updates. Android keeps a copy, which
+        restore_system_app brings back."""
+        if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+", package):
+            raise ValueError(f"Not a package name: {package}")
+        out = self.shell(f"pm uninstall --user 0 {package}").strip()
+        if "Success" not in out:
+            if "BLOCKED" in out:
+                raise AdbError("Anchor keeps anchored apps from being removed. Release it first, then remove it.")
+            raise AdbError(out or "The phone didn't remove it.")
 
     def restore_system_app(self, token, package):
         """Brings back an app that came with the phone and was uninstalled (only the computer can)."""

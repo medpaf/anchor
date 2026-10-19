@@ -58,8 +58,6 @@ public class MainActivity extends Activity {
     private final List<View> searchable = new ArrayList<>();
     /** Each list's body (the part that folds), with how the user left it: folded or open. */
     private final List<Object[]> sections = new ArrayList<>();
-    /** Apps the phone needs, which have no Uninstall (see canUninstall). */
-    private Set<String> coreApps;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -189,7 +187,6 @@ public class MainActivity extends Activity {
     }
 
     private void refresh() {
-        coreApps = null;  // the default Phone, SMS or home screen app may have changed
         boolean ready = Core.isOwner(this) && Core.isPaired(this);
         long now = System.currentTimeMillis();
         String mode = Core.mode(this, now);
@@ -385,7 +382,7 @@ public class MainActivity extends Activity {
             LinearLayout.LayoutParams ib = new LinearLayout.LayoutParams(dp(38), dp(38));
             ib.leftMargin = dp(4);
             if (canUninstall(pkg)) {
-                row.addView(iconButton("ic_delete", GREY, false, verb(pkg) + " " + name, new Runnable() {
+                row.addView(iconButton("ic_delete", GREY, false, "Uninstall " + name, new Runnable() {
                     @Override
                     public void run() {
                         confirmUninstall(pkg, name);
@@ -448,13 +445,8 @@ public class MainActivity extends Activity {
     }
 
     private void confirmUninstall(final String pkg, final String name) {
-        String message = cameWithPhone(pkg)
-                ? name + " came with your phone. Removing it can stop some of the phone's features from working. "
-                        + "It's removed with its data, and only your computer can bring it back."
-                : name + " and its data are removed from this phone.";
-        String verb = verb(pkg);
-        confirm(pkg, verb + " " + name + "?", message,
-                verb, true, new Runnable() {
+        confirm(pkg, "Uninstall " + name + "?", name + " and its data are removed from this phone.",
+                "Uninstall", true, new Runnable() {
                     @Override
                     public void run() {
                         uninstallApp(pkg, name);
@@ -587,7 +579,7 @@ public class MainActivity extends Activity {
         fillPermissions(perms, permsNote, pkg, name, info);
 
         if (canUninstall(pkg)) {  // apps you installed yourself, like the bin in the list
-            Button uninstall = dangerButton(verb(pkg));
+            Button uninstall = dangerButton("Uninstall");
             uninstall.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
@@ -1177,11 +1169,9 @@ public class MainActivity extends Activity {
     private void uninstallApp(String pkg, String name) {
         try {
             Core.uninstallApp(this, pkg);
-            Toast.makeText(this, name + (cameWithPhone(pkg) ? " is being removed" : " is being uninstalled"),
-                    Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, name + " is being uninstalled", Toast.LENGTH_SHORT).show();
         } catch (RuntimeException e) {
-            Toast.makeText(this, "Couldn't " + verb(pkg).toLowerCase(java.util.Locale.ROOT) + " " + name + ": "
-                    + e.getMessage(), Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Couldn't uninstall " + name + ": " + e.getMessage(), Toast.LENGTH_LONG).show();
         }
         // Android uninstalls in the background: look again in a moment.
         lists.postDelayed(new Runnable() {
@@ -1193,19 +1183,12 @@ public class MainActivity extends Activity {
     }
 
     /** Apps you installed yourself; apps that came with the phone can't be uninstalled. */
-    /** Any app except the ones the phone needs (Phone, SMS, home screen, Settings, Play Store, Anchor). */
+    /**
+     * Apps you installed yourself. Apps that came with the phone can only be removed from the
+     * computer: Android lets only a USB connection remove them (from here it would just undo updates).
+     */
     private boolean canUninstall(String pkg) {
-        if (coreApps == null) {
-            coreApps = new TreeSet<>();
-            org.json.JSONArray core = SystemApps.core(this);
-            for (int i = 0; i < core.length(); i++) coreApps.add(core.optString(i));
-        }
-        return Core.isInstalled(this, pkg) && !coreApps.contains(pkg);
-    }
-
-    /** "Remove" for apps that came with the phone (Android keeps a copy), "Uninstall" for the rest. */
-    private String verb(String pkg) {
-        return cameWithPhone(pkg) ? "Remove" : "Uninstall";
+        return Core.isInstalled(this, pkg) && !cameWithPhone(pkg) && !pkg.equals(getPackageName());
     }
 
     private boolean cameWithPhone(String pkg) {

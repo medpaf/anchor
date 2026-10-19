@@ -1713,7 +1713,10 @@ class AnchorWindow(Adw.ApplicationWindow):
             self.working = True
 
             def work():
-                agent.uninstall_app(token, pkg)
+                if app.get("system"):
+                    agent.remove_system_app(pkg)  # over USB: the phone app itself can't
+                else:
+                    agent.uninstall_app(token, pkg)
                 for _ in range(40):  # the phone uninstalls in the background
                     if app.get("system"):  # Android keeps a copy: wait until the phone lists it as removed
                         st = agent.status(token)

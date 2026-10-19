@@ -16,8 +16,8 @@ import java.util.Set;
 import java.util.TreeSet;
 
 /**
- * Apps that came with the phone. The computer removes one for this phone's user over USB
- * ("pm uninstall --user 0") and brings it back ("install-existing"); this only reports what's what.
+ * Apps that came with the phone. Only the computer removes one, for this phone's user over USB
+ * ("pm uninstall --user 0"); this reports what's what, and brings one back when the computer asks.
  */
 final class SystemApps {
     private SystemApps() {
@@ -68,12 +68,6 @@ final class SystemApps {
         } catch (RuntimeException ignored) {
         }
         return new JSONArray(out);
-    }
-
-    static boolean isCore(Context c, String pkg) {
-        JSONArray core = core(c);
-        for (int i = 0; i < core.length(); i++) if (pkg.equals(core.optString(i))) return true;
-        return false;
     }
 
     /** Brings back a system app removed for this user, as it was on a new phone. Needs the computer's key. */

@@ -523,14 +523,12 @@ final class Core {
         } catch (PackageManager.NameNotFoundException e) {
             throw new IllegalArgumentException(pkg + " isn't installed");
         }
-        if (SystemApps.isCore(c, pkg)) {
-            throw new IllegalArgumentException("The phone needs this app, so it can't be uninstalled");
+        if ((ai.flags & ApplicationInfo.FLAG_SYSTEM) != 0) {
+            // Removing an app that came with the phone needs the USB connection (the computer does it
+            // with "pm uninstall --user 0"); from here Android would only undo its updates.
+            throw new IllegalArgumentException("Apps that came with the phone can only be removed from the computer");
         }
         if (InstallBlocks.isPlaceholder(c, pkg)) throw new IllegalArgumentException("That's Anchor's placeholder");
-        // A system app (one that came with the phone) is removed for this phone's user: Android keeps
-        // a copy, which only the computer can bring back (SystemApps.restore).
-        Set<String> selected = selected(c);
-        if (selected.remove(pkg)) setSelected(c, selected);
         InstallBlocks.uninstall(c, pkg);
     }
 

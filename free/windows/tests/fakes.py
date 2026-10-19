@@ -240,11 +240,8 @@ class FakePhone:
                 pkg = payload.get("pkg")
                 if pkg not in self.apps:
                     return err("bad_request", f"{pkg} isn't installed")
-                if pkg in self.CORE:
-                    return err("bad_request", "The phone needs this app, so it can't be uninstalled")
-                if pkg in self.SYSTEM:  # removed for the user; Android keeps a copy
-                    self.removed[pkg] = self.apps[pkg]
-                self.selected.discard(pkg)
+                if pkg in self.SYSTEM:  # like Android: from the phone app this would only undo updates
+                    return err("bad_request", "Apps that came with the phone can only be removed from the computer")
                 del self.apps[pkg]
             self._apply()
             res = self._status(token)
@@ -406,6 +403,17 @@ class FakeAdb(ac.Adb):
         if cmd.startswith("dumpsys deviceidle whitelist +") or cmd.startswith("cmd appops set"):
             ph.background_allowed = True
             return "Added: app.anchor.agent\n" if "deviceidle" in cmd else ""
+        m = re.fullmatch(r"pm uninstall --user 0 (\S+)", cmd)
+        if m:  # removes an app that came with the phone for the user; Android keeps a copy
+            pkg = m.group(1)
+            if pkg not in ph.apps:
+                return "Failure [DELETE_FAILED_INTERNAL_ERROR]\n"
+            if pkg in ph.blocked:  # Anchor blocks uninstalling anchored apps
+                return "Failure [DELETE_FAILED_OWNER_BLOCKED]\n"
+            if pkg in ph.SYSTEM:
+                ph.removed[pkg] = ph.apps[pkg]
+            del ph.apps[pkg]
+            return "Success\n"
         if cmd == "dumpsys account":
             return dumpsys_account(ph.accounts)
         if cmd.startswith("dpm set-device-owner"):
