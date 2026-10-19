@@ -2005,6 +2005,15 @@ class AnchorWindow(Adw.ApplicationWindow):
         about.present(self)
 
 
+# On X11, GTK 4 draws a menu's corners solid even with a compositor, so a rounded menu sits in a
+# square frame. Square menus fill their frame exactly; Wayland keeps the rounded ones.
+X11_CSS = "\npopover > contents { border-radius: 0; }\n"
+
+
+def is_x11(display):
+    return type(display).__name__ == "X11Display"
+
+
 class AnchorApp(Adw.Application):
     def __init__(self):
         super().__init__(application_id=APP_ID, flags=Gio.ApplicationFlags.DEFAULT_FLAGS)
@@ -2016,7 +2025,7 @@ class AnchorApp(Adw.Application):
         display = Gdk.Display.get_default()
         Gtk.IconTheme.get_for_display(display).add_search_path(str(HERE / "icons"))
         css = Gtk.CssProvider()
-        css.load_from_string(CSS)
+        css.load_from_string(CSS + (X11_CSS if is_x11(display) else ""))
         Gtk.StyleContext.add_provider_for_display(display, css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
         Gtk.Window.set_default_icon_name(APP_ID)
 

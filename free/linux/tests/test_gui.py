@@ -1199,6 +1199,14 @@ class GuiTest(unittest.TestCase):
     def test_uninstall_from_the_deb_when_the_password_is_cancelled(self):
         self.assertIn("sudo apt remove anchor", self.uninstall_from_deb(126))
 
+    def test_menus_are_square_only_on_x11(self):
+        # GTK 4 can't draw a menu's corners see-through on X11, so menus are square there.
+        X11Display = type("X11Display", (), {})
+        WaylandDisplay = type("WaylandDisplay", (), {})
+        self.assertTrue(anchor.is_x11(X11Display()))
+        self.assertFalse(anchor.is_x11(WaylandDisplay()))
+        self.assertIn("popover > contents { border-radius: 0; }", anchor.X11_CSS)
+
     def test_uninstall_desktop_asks_first(self):
         phone = self.ready_phone()
         self.open(phone)
