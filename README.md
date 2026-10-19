@@ -173,7 +173,7 @@ Your lists and schedules are stored on the phone. The computer only keeps its ke
 
 Contributions are welcome. Open an issue or a pull request, or email me at [pafmed@protonmail.com](mailto:pafmed@protonmail.com).
 
-By contributing, you agree that I can use your contribution in Anchor under any license, including in a paid version, if that ends up happening.
+By contributing, you agree that I can use your contribution in Anchor under any license.
 
 ## Donations
 
