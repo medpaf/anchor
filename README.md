@@ -8,18 +8,18 @@
   <img src="free/linux/desktop/icons/app.anchor.Desktop.svg" width="160" alt="Anchor logo">
 </p>
 
-Anchor is an app blocker for Android that helps you spend less time on your phone and is impossible to bypass from the phone itself. You choose the apps that distract you on your computer, and with one click they disappear from your phone. Only that computer can bring them back.
+Anchor is an app blocker for Android that helps you spend less time on your phone and is impossible to bypass from the phone itself, giving you an extra layer of friction that should be more than enough to break the habit. You choose the distracting apps on your computer, and with a few clicks they disappear from your phone. Only that same computer (or another computer with your backup key) can release them back.
 
-Most app blockers stop working the moment you really want to open an app, because undoing them takes two taps. With Anchor, the only way back is to plug your phone into your computer, and that small extra step is often enough to break the habit.
+Most conventional app blockers stop working the moment you really want to open an app, because undoing them is usually quite easy. With Anchor, the only way to bring them back is to plug your phone into your computer, and that small extra step is often enough to do the trick.
 
-Each app can also have its own **schedule**, for example YouTube hidden every night from 22:30 to 07:00, or Instagram during work hours. The phone follows it on its own, even when it isn't connected. The **Never allow** list keeps apps from being installed at all. It starts with the major social media apps (TikTok, Instagram, Threads, Facebook, Reddit, YouTube, Snapchat, X, Pinterest, Tumblr, BeReal); Messenger and WhatsApp aren't on it.
+Each app can also have its own **schedule**, for example YouTube hidden every night from 22:30 to 07:00, or Instagram during work hours. The phone follows it on its own, even when it isn't connected. The **Never allow** list keeps certain selected apps from being installed at all. By default, it starts with the major social media apps (TikTok, Instagram, Threads, Facebook, Reddit, YouTube, Snapchat, X, Pinterest, Tumblr); Messenger and WhatsApp aren't on it.
 
-> **This is the free version, and it is locked to one phone.** Each computer works with a single phone. See [Free version: one phone](#free-version-one-phone).
+> **This is the free version, and it is locked to one phone.** Each computer works with a single phone. See [Free version: one phone](#free-version).
 
 ## Contents
 
 + [How it works](#how-it-works)
-+ [Free version: One phone](#free-version-one-phone)
++ [Free version](#free-version)
 + [Requirements](#requirements)
 + [Installation](#installation)
 + [Setting up the phone](#setting-up-the-phone)
@@ -39,7 +39,7 @@ Each app can also have its own **schedule**, for example YouTube hidden every ni
 
 ## How it works
 
-The desktop app talks to your phone over the USB cable. During setup it installs a small companion app (about 25 KB) on the phone and makes it the phone's **device owner**, the same mechanism companies use to manage work phones. That's what makes the block stick: the companion app can't be turned off or uninstalled from the phone.
+The desktop app talks to your phone over the USB data cable. During setup it installs a small companion app (about 25 KB) on the phone named Anchor and makes it the phone's **device owner**, the same mechanism companies use to manage work phones. What makes the block stick is the fact that the companion app can't be turned off or uninstalled from the phone since it's now the device owner.
 
 When you anchor an app, the companion app:
 
@@ -56,7 +56,7 @@ Nothing gets deleted. Data, logins and settings in those apps stay where they ar
 </p>
 
 
-## Free version: One phone
+## Free version
 
 This free version of Anchor is locked to **one phone per computer**. The first phone set up on a computer is the one it keeps, and setting up a second phone is refused.
 
@@ -81,7 +81,7 @@ This free version of Anchor is locked to **one phone per computer**. The first p
 
 ### Linux
 
-**Ubuntu, Debian, Linux Mint, Pop!_OS:** download [anchor-linux.deb](https://github.com/medpaf/anchor/releases/download/linux/anchor-linux.deb), then install it (this also installs adb and everything else Anchor needs):
+Debian-based (**Debian, Ubuntu, Debian, Linux Mint, Pop!_OS, etc**): download [anchor-linux.deb](https://github.com/medpaf/anchor/releases/download/linux/anchor-linux.deb), then install it (this also installs adb and everything else Anchor needs):
 
 ```
 sudo apt install ./anchor-linux.deb
@@ -127,11 +127,10 @@ There's a helper in the desktop itself that will guide you through these simple 
 
 ### Anchoring apps
 
-Plug in the phone and open Anchor. Find an app under "Your apps" (there's a search box) and click **Anchor** — it disappears from the phone right away and moves to "Anchored apps". **Release** brings back one app; **Release all**, in the status bar, brings back everything.
+Plug in the phone and open Anchor. Find an app under "Your apps" (there's a search box) and click **Anchor** — it disappears from the phone right away and moves to "Anchored apps". **Release** brings back one app; **Release all**, brings back everything.
 
 Apps on your **Never allow** list show up in the phone's settings as "Blocked by Anchor": these are
 Anchor's tiny placeholders that stop them from being installed. Anchored apps are hidden completely.
-
 
 You can unplug the phone whenever you want — everything stays blocked. The phone app can never release anything.
 
@@ -165,7 +164,9 @@ Apps that didn't come with the phone have an **Uninstall** button. If the app is
 
 ### Backup key
 
-The key that releases the apps is stored in `~/.local/share/anchor/key.json` on Linux and `%APPDATA%\Anchor\key.json` on Windows. It should be copied somewhere deliberately out of easy reach — a password manager, or a written note kept away from the phone. **Menu → Backup key…** displays it.
+The key that releases the apps can be found in **Menu → Backup key…**.
+
+That key is also stored in `~/.local/share/anchor/key.json` on Linux and `%APPDATA%\Anchor\key.json` on Windows. It should be copied somewhere deliberately out of easy reach — a password manager, or a written note kept away from the phone.
 
 On a new or reinstalled computer, install Anchor, connect the phone and enter the key with **Menu → Use a backup key…**.
 
@@ -205,7 +206,7 @@ To uninstall it:
 Anchor doesn't collect any data from your phone or your computer, and it doesn't send anything
 anywhere.
 
-- **No internet.** The phone app doesn't even have Android's internet permission, so it can't go
+- **No internet access.** The phone app doesn't even have Android's internet permission, so it can't go
   online. The desktop app only talks to your phone, over the USB cable. The one exception is
   **Menu → Check for updates…**: only when you click it, it asks GitHub which build is the newest.
   Nothing about you, your phone or your apps is sent.
