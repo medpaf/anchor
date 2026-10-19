@@ -13,9 +13,9 @@
   <br>
 </p>
 
-Anchor is an app blocker for Android that I developed so that I could block the apps that distract me without being able to turn them off from the phone itself. You pick the apps you want gone on your computer, and they simply disappear from your phone. To get them back, you have to plug the phone into that same computer (or another one with your backup key).
+Anchor is an app blocker for Android developed so that it could block the distracting apps without being able to umblock them from the phone itself. You pick the apps you want gone on your computer, and they simply disappear from your phone. To get them back, you have to plug the phone into that same computer (or another one with your backup key).
 
-Every app blocker I tried had the same problem: the moment I really wanted to open Instagram, turning the blocker off took two taps. With Anchor that's not an option. Having to go to the computer and plug in a cable is usually enough to make me stop and think.
+Conventional app blockers have the same problem: turning them off takes only a few taps. With Anchor that's not an option. Having to go to the computer and plug in a cable is usually enough to stop the habit.
 
 You can also give an app a **schedule** (like YouTube hidden every night from 22:30 to 07:00, or Instagram during work hours), which the phone enforces by itself even when it's not plugged in. There's also a **Never allow** list for apps you don't want installed at all, **per-app permissions**, **screen time** and more.
 
