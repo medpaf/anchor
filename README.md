@@ -10,9 +10,9 @@
 
 Anchor is an app blocker for Android that you can't turn off from the phone. You pick the apps that distract you on your computer, and they disappear from your phone. To get them back, you have to plug the phone into that same computer (or another one with your backup key).
 
-I made it because every app blocker I tried had the same problem: the moment I really wanted to open Instagram, turning the blocker off took two taps. With Anchor that's not an option, and having to go to the computer and plug in a cable is usually enough to make me stop and think.
+With Anchor, having to go to the computer and plug in a cable is usually enough to stop the habit.
 
-You can also give an app a schedule, like YouTube hidden every night from 22:30 to 07:00, or Instagram during work hours. The phone takes care of that by itself, even when it's not plugged in. And there's a Never allow list for apps you don't want installed at all. It starts with the big social media apps (TikTok, Instagram, Threads, Facebook, Reddit, YouTube, Snapchat, X, Pinterest, Tumblr). Messenger and WhatsApp aren't on it.
+You can also give an app a schedule, like YouTube hidden every night from 22:30 to 07:00, or Instagram during work hours. The phone takes care of that by itself, even when it's not plugged in. There's also a Never allow list for apps you don't want installed at all. By default, it starts with the big social media apps (TikTok, Instagram, Threads, Facebook, Reddit, YouTube, Snapchat, X, Pinterest, Tumblr) but you can change it to your specific needs.
 
 > It works with one phone per computer.
 
@@ -39,7 +39,7 @@ You can also give an app a schedule, like YouTube hidden every night from 22:30 
 
 The desktop app talks to the phone over USB. During setup it puts a small companion app on the phone (about 25 KB, also called Anchor) and makes it the phone's device owner. That's the same thing companies use to manage work phones, and it's what makes the block stick: a device owner app can't be switched off or uninstalled from the phone.
 
-When you anchor an app, the companion app hides it from the home screen and the app drawer, and suspends it so it can't run or send notifications. It also takes away its permissions (camera, microphone, location and so on) until you release it, and puts them back exactly how they were afterwards. It stops the app from being uninstalled, so you can't just delete it and reinstall it, and it stops new users or guests from being added so you can't install it in another profile either.
+When you anchor an app, the companion app hides it from the home screen and the app drawer, and suspends it so it can't run or send notifications. It also takes away all of its permissions (camera, microphone, location and so on) until you release it, and puts them back exactly how they were afterwards. It stops the app from being uninstalled, so you can't just delete it and reinstall it, and it stops new users or guests from being added so you can't install it in another profile either.
 
 Nothing gets deleted. The app's data and logins are still there when you release it.
 
@@ -74,10 +74,6 @@ tar -xzf anchor-linux.tar.gz
 cd anchor-linux
 ./install.sh
 ```
-
-If you've cloned this repository, you can also run `./install.sh` from `free/linux`.
-
-Then open Anchor from your apps, or run `anchor` in the terminal.
 
 ### Windows
 
@@ -126,7 +122,7 @@ In the phone's settings, these apps show up as "Blocked by Anchor". Those are ti
 
 Click the clock next to an app, then "Add a time", and pick the days and the start and end times. If the end is earlier than the start, it runs past midnight. If they're the same, it lasts all day. An app can have more than one. Click a time to edit it, use its switch to turn it off for a while, or the bin to delete it.
 
-While a schedule is on, the app says something like "Hidden by its schedule until 07:00", even if nothing else is anchored. To end one early, open the clock and switch the schedule off or delete it.
+While a schedule is on, the app says something like "Hidden by its schedule until 07:00", even if nothing else is anchored. To end one early, open the clock and switch the schedule off or delete it using the desktop app.
 
 <img src="docs/screenshots/schedule.png" width="600" alt="YouTube's schedule: hidden every day from 22:30 to 07:00">
 
@@ -147,6 +143,8 @@ The key that releases your apps is in Menu → Backup key…. It's also saved in
 Save a copy right after setting up your phone, somewhere you can't get to on a whim, like a password manager or a note in a drawer. If you set up Anchor on a new or reinstalled computer, connect the phone and enter the key with Menu → Use a backup key….
 
 If you lose both the computer and the key, the only way to get your apps back is a factory reset.
+
+> **Disclaimer:** Keeping your key safe is your responsibility. I'm not responsible if you lose it and can't release your apps anymore, or if you have to factory reset your phone (and lose its data) to get them back.
 
 ### Removing Anchor from the phone
 
