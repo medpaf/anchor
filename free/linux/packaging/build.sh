@@ -44,6 +44,8 @@ printf '%s\n' '#!/bin/sh' \
   '# Removes the Anchor package. Run by Anchor'"'"'s "Uninstall Anchor from this computer…" through pkexec.' \
   'exec dpkg --remove anchor' > "$DEB/usr/libexec/anchor-uninstall"
 chmod 755 "$DEB/usr/libexec/anchor-uninstall"
+# Menu → Check for updates… → Update runs this through pkexec: it installs the downloaded .deb.
+install -m 755 packaging/anchor-update "$DEB/usr/libexec/anchor-update"
 
 cat > "$DEB/usr/bin/anchor" <<'EOF'
 #!/bin/sh

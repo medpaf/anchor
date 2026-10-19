@@ -203,6 +203,7 @@ def in_background(work, done=None, fail=None):
 RELEASE_CHECK = "/usr/libexec/anchor-release-check"  # installed with polkit/app.anchor.release.policy
 RELEASE_POLICY = "/usr/share/polkit-1/actions/app.anchor.release.policy"
 UNINSTALL_HELPER = "/usr/libexec/anchor-uninstall"  # removes the .deb, or install.sh's system files
+UPDATE_HELPER = "/usr/libexec/anchor-update"  # installs a downloaded anchor-linux.deb (only in the .deb)
 
 
 def system_password_check():
@@ -1912,6 +1913,15 @@ class AnchorWindow(Adw.ApplicationWindow):
             if result == updates.CURRENT:
                 d = Adw.AlertDialog.new("You're up to date", "This is the newest version of Anchor.")
                 d.add_response("close", "OK")
+            elif result == updates.AVAILABLE and self.can_update_itself():
+                d = Adw.AlertDialog.new("A new version of Anchor is available",
+                                        "Anchor downloads it from GitHub, installs it over this one and restarts. "
+                                        "Your key and settings stay.")
+                d.add_response("later", "Not now")
+                d.add_response("update", "Update")
+                d.set_response_appearance("update", Adw.ResponseAppearance.SUGGESTED)
+                d.set_default_response("update")
+                d.set_close_response("later")
             elif result == updates.AVAILABLE:
                 d = Adw.AlertDialog.new("A new version of Anchor is available",
                                         "Download it from GitHub and install it over this one. Your key and settings stay.")
@@ -1927,7 +1937,13 @@ class AnchorWindow(Adw.ApplicationWindow):
                 d.add_response("close", "Close")
                 d.add_response("download", "Open downloads")
                 d.set_close_response("close")
-            d.connect("response", lambda _d, rid: rid == "download" and self.open_link(updates.download_page(UPDATE_CHANNEL)))
+            def response(_d, rid):
+                if rid == "download":
+                    self.open_link(updates.download_page(UPDATE_CHANNEL))
+                elif rid == "update":
+                    self.install_update()
+
+            d.connect("response", response)
             d.present(self)
 
         def fail(e):
@@ -1936,6 +1952,41 @@ class AnchorWindow(Adw.ApplicationWindow):
 
         self.toast("Checking for updates…")
         in_background(lambda: updates.check(UPDATE_CHANNEL), done, fail)
+
+    def can_update_itself(self):
+        """Only the .deb can: it ships the helper that installs a newer one (install.sh copies can't)."""
+        return PACKAGED and os.access(UPDATE_HELPER, os.X_OK) and bool(shutil.which("pkexec"))
+
+    def install_update(self):
+        """Downloads the newest .deb, installs it after the computer's password, then restarts Anchor.
+        The key and settings in ~/.local/share/anchor aren't touched."""
+        self.toast("Downloading the new version…", timeout=10)
+
+        def work():
+            deb = updates.download(UPDATE_CHANNEL, "anchor-linux.deb")
+            return subprocess.run(["pkexec", "--disable-internal-agent", UPDATE_HELPER, str(deb)],
+                                  timeout=900).returncode
+
+        def done(code):
+            if code == 0:
+                # Start the new version once this one has closed (only one Anchor runs at a time).
+                subprocess.Popen(["sh", "-c", "sleep 1; exec anchor"], start_new_session=True)
+                self.get_application().quit()
+            elif code == 126:
+                self.toast("Update cancelled")
+            elif code == 127:
+                self.toast("Password not accepted · Anchor wasn't updated")
+            else:
+                self.error_dialog("Couldn't update Anchor",
+                                  "The new version couldn't be installed. You can download it from GitHub "
+                                  "and install it yourself.")
+
+        def fail(e):
+            self.error_dialog("Couldn't update Anchor",
+                              "Anchor couldn't download the new version. Check your internet connection "
+                              "and try again.", str(e))
+
+        in_background(work, done, fail)
 
     def open_link(self, url):
         Gtk.UriLauncher.new(url).launch(self, None, None)

@@ -1,0 +1,20 @@
+#!/bin/sh
+# Installs a newer Anchor .deb that Anchor downloaded from its GitHub releases. Anchor runs it through
+# pkexec from Menu → Check for updates… → Update, so only after the computer's password.
+# Shipped in the .deb as /usr/libexec/anchor-update.
+set -eu
+[ $# -eq 1 ] || { echo "usage: anchor-update FILE.deb" >&2; exit 2; }
+
+work=$(mktemp -d)
+trap 'rm -rf "$work"' EXIT
+chmod 755 "$work"
+# Check and install our own copy, so the file can't be swapped after it was checked.
+cp -- "$1" "$work/anchor.deb"
+chmod 644 "$work/anchor.deb"
+package=$(dpkg-deb -f "$work/anchor.deb" Package 2>/dev/null || true)
+if [ "$package" != "anchor" ]; then
+  echo "That isn't an Anchor package." >&2
+  exit 3
+fi
+
+DEBIAN_FRONTEND=noninteractive apt-get install -y "$work/anchor.deb"

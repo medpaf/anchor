@@ -61,6 +61,22 @@ class UpdatesTest(unittest.TestCase):
             with self.assertRaises(OSError):
                 updates.check("linux")
 
+    def test_download_saves_the_package(self):
+        body = b"!<arch>\n" + b"x" * 1000
+        with mock.patch.object(updates.urllib.request, "urlopen", return_value=io.BytesIO(body)) as urlopen:
+            path = updates.download("linux", "anchor-linux.deb")
+        self.addCleanup(lambda: (path.unlink(), path.parent.rmdir()))
+        self.assertEqual(path.read_bytes(), body)
+        self.assertEqual(urlopen.call_args[0][0].full_url,
+                         "https://github.com/medpaf/anchor/releases/download/linux/anchor-linux.deb")
+        self.assertEqual(path.parent.stat().st_mode & 0o777, 0o700, "a private folder")
+
+    def test_download_refuses_something_that_isnt_a_package(self):
+        with mock.patch.object(updates.urllib.request, "urlopen", return_value=io.BytesIO(b"<html>Not Found</html>")):
+            with mock.patch("tempfile.mkdtemp", return_value=self.tmp.name):  # inside the test's own folder
+                with self.assertRaises(OSError):
+                    updates.download("linux", "anchor-linux.deb")
+
     def test_download_pages(self):
         self.assertEqual(updates.download_page("linux"), "https://github.com/medpaf/anchor/releases/tag/linux")
         self.assertEqual(updates.download_page("windows"), "https://github.com/medpaf/anchor/releases/tag/windows")

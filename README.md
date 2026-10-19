@@ -105,6 +105,10 @@ Download [anchor-win.exe](https://github.com/medpaf/anchor/releases/download/win
 
 GitHub builds these downloads by itself on every change, so the links always give the newest version.
 
+### Updating
+
+Open Anchor and choose **Menu → Check for updates…**. If you installed the `.deb`, **Update** downloads the new version, installs it after your password and restarts Anchor. Otherwise it opens the download page: install the new version over the old one, without uninstalling first. Either way, your backup key and settings stay.
+
 To uninstall later, see [Removing Anchor from the computer](#removing-anchor-from-the-computer).
 
 ## Setting up the phone

@@ -26,4 +26,14 @@
     </defaults>
     <annotate key="org.freedesktop.policykit.exec.path">/usr/libexec/anchor-uninstall</annotate>
   </action>
+  <action id="app.anchor.update">
+    <description>Update Anchor</description>
+    <message>Authentication is required to update Anchor</message>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/libexec/anchor-update</annotate>
+  </action>
 </policyconfig>

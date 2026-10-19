@@ -1071,6 +1071,51 @@ class GuiTest(unittest.TestCase):
         self.assertEqual(self.dialogs[-1].get_heading(), "A new version of Anchor is available")
         self.assertEqual(opened, ["https://github.com/medpaf/anchor/releases/tag/linux"])
 
+    def update_from_deb(self, pkexec_code=0, download_error=None):
+        """Check for updates… → Update, with the download, password prompt and restart replaced."""
+        self.open(self.ready_phone())
+        self.wait_page("main")
+        deb = Path(self.tmp.name, "anchor-linux.deb")
+        with mock.patch.object(anchor.AnchorWindow, "can_update_itself", lambda win: True), \
+                mock.patch.object(anchor.updates, "check", return_value=anchor.updates.AVAILABLE), \
+                mock.patch.object(anchor.updates, "download", return_value=deb, side_effect=download_error) as download, \
+                mock.patch.object(anchor.subprocess, "run",
+                                  return_value=subprocess.CompletedProcess([], pkexec_code)) as run, \
+                mock.patch.object(anchor.subprocess, "Popen") as popen, \
+                mock.patch.object(Adw.Application, "quit") as quit_:
+            self.win.activate_action("win.updates", None)
+            self.pump(lambda: self.dialogs, what="update answer")
+            self.assertIn("installs it over this one and restarts", self.dialogs[-1].get_body())
+            self.dialogs[-1].emit("response", "update")
+            self.pump(lambda: quit_.called or self.errors or any("Update" in t or "Password" in t for t in self.toasts[1:]),
+                      what="update finished")
+        return download, run, popen, quit_, deb
+
+    def test_update_from_the_deb_installs_and_restarts(self):
+        download, run, popen, quit_, deb = self.update_from_deb()
+        download.assert_called_once_with("linux", "anchor-linux.deb")
+        self.assertEqual(run.call_args[0][0], ["pkexec", "--disable-internal-agent", anchor.UPDATE_HELPER, str(deb)])
+        self.assertIn("exec anchor", popen.call_args[0][0][-1], "the new version starts once this one closes")
+        quit_.assert_called_once()
+        self.assertTrue(os.path.isdir(os.path.join(self.tmp.name, "anchor")), "the key stays")
+
+    def test_update_cancelled_at_the_password(self):
+        _download, _run, popen, quit_, _deb = self.update_from_deb(pkexec_code=126)
+        self.assertIn("Update cancelled", self.toasts)
+        popen.assert_not_called()
+        quit_.assert_not_called()
+
+    def test_update_download_failing_is_explained(self):
+        _download, run, _popen, quit_, _deb = self.update_from_deb(download_error=OSError("offline"))
+        self.assertEqual(self.errors[-1][0], "Couldn't update Anchor")
+        run.assert_not_called()  # nothing to install, so no password prompt
+        quit_.assert_not_called()
+
+    def test_only_the_deb_updates_itself(self):
+        with mock.patch.object(anchor, "PACKAGED", False):
+            self.open(self.ready_phone())
+            self.assertFalse(self.win.can_update_itself(), "install.sh copies get the download page instead")
+
     def test_check_for_updates_not_now_opens_nothing(self):
         self.open(self.ready_phone())
         self.wait_page("main")

@@ -44,6 +44,18 @@ jobs:
           # Still running after 10 seconds (exit 124) means it started fine.
           timeout 10 xvfb-run -a anchor || [ $? -eq 124 ]
 
+      - name: Check that Anchor's updater installs Anchor and refuses anything else
+        run: |
+          sudo /usr/libexec/anchor-update dist/anchor-linux.deb
+          mkdir -p "$RUNNER_TEMP/fake/DEBIAN"
+          printf 'Package: not-anchor\nVersion: 1\nArchitecture: all\nMaintainer: Test <test@example.com>\nDescription: test\n' \
+            > "$RUNNER_TEMP/fake/DEBIAN/control"
+          dpkg-deb --build "$RUNNER_TEMP/fake" "$RUNNER_TEMP/not-anchor.deb"
+          if sudo /usr/libexec/anchor-update "$RUNNER_TEMP/not-anchor.deb"; then
+            echo "the updater accepted a package that isn't Anchor" >&2; exit 1
+          fi
+          if dpkg -s not-anchor >/dev/null 2>&1; then echo "not-anchor got installed" >&2; exit 1; fi
+
       - name: Check that Anchor's uninstall helper removes the package
         run: |
           sudo /usr/libexec/anchor-uninstall
