@@ -172,6 +172,7 @@ class TimingCommandsTest(unittest.TestCase):
         cmds = [c[1] for c in adb.log if c[0] == "shell"]
         self.assertIn("dumpsys deviceidle whitelist +app.anchor.agent", cmds)
         self.assertIn("cmd appops set app.anchor.agent SCHEDULE_EXACT_ALARM allow", cmds)
+        self.assertIn("cmd appops set app.anchor.agent GET_USAGE_STATS allow", cmds)
 
     def test_schedule_hides_only_its_own_app(self):
         phone = FakePhone().ready(TOKEN)

@@ -489,6 +489,21 @@ class GuiTest(unittest.TestCase):
         self.assertTrue(d.about.get_visible() and d.perms.get_visible() and d.uninstall.get_visible(),
                         "then everything at once")
 
+    def test_backup_key_saves_as_a_pdf(self):
+        self.open(self.ready_phone())
+        self.wait_page("main")
+        path = os.path.join(self.tmp.name, "Anchor backup key.pdf")
+        self.win.save_key_pdf(path)
+        with open(path, "rb") as f:
+            self.assertEqual(f.read(5), b"%PDF-")
+        self.assertIn("Backup key saved as Anchor backup key.pdf", self.toasts)
+
+    def test_backup_key_pdf_failure_is_explained(self):
+        self.open(self.ready_phone())
+        self.wait_page("main")
+        self.win.save_key_pdf(os.path.join(self.tmp.name, "no-such-folder", "key.pdf"))
+        self.assertEqual(self.errors[-1][0], "Couldn't save the backup key")
+
     def test_uninstall_needs_confirmation_in_the_list(self):
         phone = self.ready_phone()
         self.open(phone)
@@ -756,6 +771,8 @@ class GuiTest(unittest.TestCase):
         self.assertEqual(about["Version"], "1.2.3")
         self.assertEqual(about["Status"], "Not anchored")
         self.assertEqual(about["Type"], "Installed by you")
+        self.assertEqual(about["Screen time today"], "25 min")
+        self.assertEqual(about["Screen time, last 7 days"], "3 h 10 min")
         self.assertEqual(phone.blocked, set(), "clicking the row doesn't anchor")
         self.assertEqual(self.win.rows[INSTAGRAM].anchor_button.get_label(), "Anchor")
         self.assertEqual(sorted(r.get_title() for r in d.perm_rows.values()), ["Camera", "Microphone", "Notifications"])
@@ -1250,7 +1267,7 @@ class GuiTest(unittest.TestCase):
             self.win.on_uninstall_desktop()
             self.dialogs[-1].emit("response", "uninstall")
             self.pump(lambda: self.dialogs[-1].get_heading() == "Uninstalled", what="done")
-        self.assertFalse(os.path.exists(key_dir), "the key is gone")
+        self.assertTrue(os.path.isdir(key_dir), "the backup key is kept")
         self.assertEqual(run.call_args[0][0], ["pkexec", "--disable-internal-agent", anchor.UNINSTALL_HELPER])
         return self.dialogs[-1].get_body()
 

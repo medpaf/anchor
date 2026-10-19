@@ -219,6 +219,7 @@ class FakePhone:
             res = {"pkg": pkg, "label": self.apps[pkg], "version": "1.2.3", "version_code": 123,
                    "installed": 1_700_000_000_000, "updated": 1_760_000_000_000,
                    "system": pkg in self.SYSTEM, "target_sdk": 35, "blocked": pkg in self.blocked,
+                   "usage_today": 25 * 60_000, "usage_week": 190 * 60_000,
                    "permissions": [{"name": p, "label": labels.get(p, p), "granted": p in self.granted.get(pkg, set()),
                                     "locked": pkg in self.blocked, "had": p in self.revoked.get(pkg, set())}
                                    for p in self.uses.get(pkg, [])]}

@@ -4,7 +4,7 @@ import unittest
 from datetime import datetime
 
 from fakes import ROOT  # noqa: F401  (puts desktop/ on sys.path)
-from timetext import clock, countdown, days_text, hours_text, minutes_until
+from timetext import clock, countdown, days_text, hours_text, minutes_until, screen_time
 
 
 def ts(text):
@@ -54,6 +54,16 @@ class MinutesUntilTest(unittest.TestCase):
 
     def test_same_minute_means_tomorrow(self):
         self.assertEqual(minutes_until(16, 30, ts("2026-10-19T16:30:20")), 24 * 60)
+
+
+class ScreenTimeTest(unittest.TestCase):
+    def test_words(self):
+        self.assertEqual(screen_time(0), "Not used")
+        self.assertEqual(screen_time(None), "Not used")
+        self.assertEqual(screen_time(30_000), "Less than a minute")
+        self.assertEqual(screen_time(45 * 60_000), "45 min")
+        self.assertEqual(screen_time(60 * 60_000), "1 h")
+        self.assertEqual(screen_time(65 * 60_000 + 59_000), "1 h 5 min")
 
 
 if __name__ == "__main__":

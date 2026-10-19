@@ -543,16 +543,22 @@ public class MainActivity extends Activity {
         LinearLayout about = new LinearLayout(this);
         about.setOrientation(LinearLayout.VERTICAL);
         about.setBackground(cardWithBorder(CARD, 0x0FFFFFFF, dp(16)));
+        List<String[]> factList = new ArrayList<>();
+        factList.add(new String[]{"Status", statusText(pkg)});
+        if (info.has("usage_today")) {
+            factList.add(new String[]{"Screen time today", screenTime(info.optLong("usage_today"))});
+            factList.add(new String[]{"Screen time, last 7 days", screenTime(info.optLong("usage_week"))});
+        }
         String[][] facts = {
-                {"Status", statusText(pkg)},
                 {"Version", info.optString("version").isEmpty() ? "—" : info.optString("version")},
                 {"Installed", date(info.optLong("installed"))},
                 {"Last updated", date(info.optLong("updated"))},
                 {"Type", info.optBoolean("system") ? "Came with the phone" : "Installed by you"},
         };
-        for (int i = 0; i < facts.length; i++) {
+        Collections.addAll(factList, facts);
+        for (int i = 0; i < factList.size(); i++) {
             if (i > 0) about.addView(divider());
-            about.addView(fact(facts[i][0], facts[i][1]));
+            about.addView(fact(factList.get(i)[0], factList.get(i)[1]));
         }
         box.addView(about, fill(dp(8)));
 
@@ -639,9 +645,7 @@ public class MainActivity extends Activity {
             final android.widget.Switch sw = new android.widget.Switch(this);
             sw.setChecked(p.optBoolean("granted"));
             sw.setEnabled(!blocked);
-            int[][] states = {{-android.R.attr.state_enabled}, {android.R.attr.state_checked}, {}};
-            sw.setThumbTintList(new ColorStateList(states, new int[]{0xFF5E5870, 0xFFF4F0FF, 0xFFF4F0FF}));
-            sw.setTrackTintList(new ColorStateList(states, new int[]{0x14FFFFFF, 0xFF7C3AED, 0x1FFFFFFF}));
+            styleSwitch(sw);
             sw.setContentDescription(titleText);
             sw.setOnCheckedChangeListener(new android.widget.CompoundButton.OnCheckedChangeListener() {
                 @Override
@@ -673,6 +677,29 @@ public class MainActivity extends Activity {
         }
     }
 
+    /**
+     * A switch drawn like the desktop's: a pill-shaped track that's visible when off too, with the knob
+     * inside it. (Android's own off track almost disappears on the dark background, so off switches
+     * looked shifted next to the on ones.)
+     */
+    private void styleSwitch(android.widget.Switch sw) {
+        int[][] states = {{-android.R.attr.state_enabled}, {android.R.attr.state_checked}, {}};
+        GradientDrawable thumb = new GradientDrawable();
+        thumb.setShape(GradientDrawable.OVAL);
+        thumb.setSize(dp(26), dp(26));
+        thumb.setColor(new ColorStateList(states, new int[]{0xFF6E6880, 0xFFFFFFFF, 0xFFE6E1F0}));
+        thumb.setStroke(dp(3), 0x00000000);  // a transparent ring keeps the knob inside the track
+        GradientDrawable track = new GradientDrawable();
+        track.setSize(dp(52), dp(26));
+        track.setCornerRadius(dp(13));
+        track.setColor(new ColorStateList(states, new int[]{0x14FFFFFF, 0xFF7C3AED, 0x38FFFFFF}));
+        sw.setThumbDrawable(thumb);
+        sw.setTrackDrawable(track);
+        sw.setThumbTintList(null);
+        sw.setTrackTintList(null);
+        sw.setSwitchMinWidth(dp(52));
+    }
+
     /** Like the desktop's status line in the details window. */
     private String statusText(String pkg) {
         long now = System.currentTimeMillis();
@@ -681,6 +708,15 @@ public class MainActivity extends Activity {
         if (until != null) return "Hidden by its schedule until " + time(until, now);
         if (!schedulesFor(pkg).isEmpty()) return "Has a schedule";
         return "Not anchored";
+    }
+
+    /** "1 h 5 min", "45 min", "Less than a minute" or "Not used", like the desktop. */
+    private static String screenTime(long ms) {
+        long minutes = ms / 60_000;
+        if (ms <= 0) return "Not used";
+        if (minutes < 1) return "Less than a minute";
+        if (minutes < 60) return minutes + " min";
+        return (minutes / 60) + " h" + (minutes % 60 > 0 ? " " + (minutes % 60) + " min" : "");
     }
 
     private String date(long ms) {

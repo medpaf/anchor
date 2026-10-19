@@ -16,7 +16,7 @@ import platform_support as plat
 AGENT_PKG = "app.anchor.agent"
 AGENT_ADMIN = f"{AGENT_PKG}/.AdminReceiver"
 AGENT_URI = "content://app.anchor.agent.cmd"
-AGENT_VERSION = 34  # must match CommandProvider.VERSION in the bundled APK
+AGENT_VERSION = 35  # must match CommandProvider.VERSION in the bundled APK
 
 
 class AdbError(Exception):
@@ -289,10 +289,11 @@ class Agent:
         return self.call("install_blocks", token=token, apps=apps)
 
     def allow_background(self):
-        """Lets the phone app wake up on time for timers and schedules: no battery optimisation,
-        and permission for exact alarms. Safe to repeat."""
+        """Lets the phone app wake up on time for timers and schedules (no battery optimisation,
+        and permission for exact alarms) and read screen time for app details. Safe to repeat."""
         self.shell(f"dumpsys deviceidle whitelist +{AGENT_PKG}")
         self.shell(f"cmd appops set {AGENT_PKG} SCHEDULE_EXACT_ALARM allow")
+        self.shell(f"cmd appops set {AGENT_PKG} GET_USAGE_STATS allow")  # screen time in app details
 
     def unshift(self, token):
         return self.call("unshift", token=token)

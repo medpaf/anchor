@@ -22,12 +22,13 @@ from PySide6.QtWidgets import (QApplication, QFrame, QGridLayout, QHBoxLayout, Q
 
 import adbclient as ac  # noqa: E402
 import catalog  # noqa: E402
+import keysheet  # noqa: E402
 import platform_support as plat  # noqa: E402
 import theme  # noqa: E402
 import updates  # noqa: E402
 import widgets as w  # noqa: E402
 from permnames import friendly  # noqa: E402
-from timetext import DAY_NAMES, clock, countdown, days_text, hours_text, plural  # noqa: E402
+from timetext import DAY_NAMES, clock, countdown, days_text, hours_text, plural, screen_time  # noqa: E402
 
 APP_ID = plat.APP_ID
 APK = HERE / "anchor-agent.apk"
@@ -177,6 +178,44 @@ class AboutDialog(w.Overlay):
 
     def get_website(self):
         return WEBSITE
+
+
+def write_key_pdf(path, items):
+    """Draws the backup key page (keysheet.page) as a one-page A4 PDF with Qt."""
+    from PySide6.QtCore import QMarginsF, QRect
+    from PySide6.QtGui import QPageLayout, QPageSize, QPainter, QPdfWriter
+
+    writer = QPdfWriter(str(path))
+    writer.setPageLayout(QPageLayout(QPageSize(QPageSize.A4), QPageLayout.Portrait, QMarginsF(0, 0, 0, 0)))
+    writer.setResolution(72)  # one unit = one point, like the Linux version
+    width, margin = 595, 64
+    styles = {  # size, bold, monospace, space before
+        "title": (24, True, False, 0), "key": (16, True, True, 22), "small": (10, False, False, 14),
+        "heading": (13, True, False, 22), "text": (11, False, False, 8),
+    }
+    painter = QPainter()
+    if not painter.begin(writer):  # Qt doesn't raise when it can't write there
+        raise OSError(f"Can't write to {path}")
+    y = margin
+    for style, text in items:
+        size, bold, mono, before = styles[style]
+        font = QFont("Consolas" if mono else "Segoe UI")
+        font.setStyleHint(QFont.Monospace if mono else QFont.SansSerif)
+        font.setPointSizeF(size)
+        font.setBold(bold)
+        painter.setFont(font)
+        y += before
+        inset = 16 if mono else 0
+        area = QRect(margin + inset, y, width - 2 * margin - 2 * inset, 2000)
+        box = painter.boundingRect(area, Qt.TextWordWrap, text)
+        if style == "key":  # the key on a light box, easy to read and copy
+            painter.fillRect(QRect(margin, y, width - 2 * margin, box.height() + 28), QColor("#F0EBFA"))
+            y += 14
+            area.moveTop(y)
+        painter.setPen(QColor("#54545F" if style == "small" else "#141219"))
+        painter.drawText(area, Qt.TextWordWrap, text)
+        y += box.height() + (14 if style == "key" else 0)
+    painter.end()
 
 
 class AnchorWindow(QMainWindow):
@@ -1368,6 +1407,8 @@ class AnchorWindow(QMainWindow):
 
         for title, value in [
             ("Status", self.status_text(info["pkg"])),
+            *([("Screen time today", screen_time(info["usage_today"])),
+               ("Screen time, last 7 days", screen_time(info.get("usage_week")))] if "usage_today" in info else []),
             ("Version", info.get("version") or "—"),
             ("Installed", date(info.get("installed"))),
             ("Last updated", date(info.get("updated"))),
@@ -1659,6 +1700,7 @@ class AnchorWindow(QMainWindow):
         key = w.label(ac.KeyStore.format(self.keys.token), "keyLabel", wrap=True, align=Qt.AlignCenter,
                       selectable=True)
         d.set_extra_child(key)
+        d.add_response("save", "Save as PDF…")
         d.add_response("copy", "Copy")
         d.add_response("close", "Close")
         d.set_default_response("close")
@@ -1668,9 +1710,32 @@ class AnchorWindow(QMainWindow):
             if rid == "copy":
                 QApplication.clipboard().setText(ac.KeyStore.format(self.keys.token))
                 self.toast("Backup key copied")
+            elif rid == "save":
+                self.on_save_key_pdf()
 
         d.connect("response", response)
         d.present(self)
+
+    def on_save_key_pdf(self):
+        """A printable page with the key, saved where you choose (Documents by default), so it's kept
+        even if Anchor is uninstalled from this computer."""
+        from PySide6.QtCore import QStandardPaths
+        from PySide6.QtWidgets import QFileDialog
+
+        docs = QStandardPaths.writableLocation(QStandardPaths.DocumentsLocation)
+        path, _ = QFileDialog.getSaveFileName(self, "Save your backup key", str(Path(docs) / keysheet.FILENAME),
+                                              "PDF (*.pdf)")
+        if path:
+            self.save_key_pdf(path)
+
+    def save_key_pdf(self, path):
+        phone = self.model if self.model and self.model != "your phone" else ""
+        try:
+            write_key_pdf(path, keysheet.page(ac.KeyStore.format(self.keys.token), phone))
+        except Exception as e:  # noqa: BLE001 - a folder you can't write to, a full disk…
+            self.error_dialog("Couldn't save the backup key", str(e))
+            return
+        self.toast(f"Backup key saved as {Path(path).name}")
 
     def on_import(self):
         d = w.AlertDialog(self, "Use a backup key",

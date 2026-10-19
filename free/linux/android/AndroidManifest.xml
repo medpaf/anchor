@@ -11,6 +11,9 @@
          blocked app when the user asks for it on the computer. -->
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
 
+    <!-- Screen time per app, for the details screens. Turned on by the computer over USB. -->
+    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" />
+
     <!-- See every installed app (Android 11+ package visibility). Needed to keep track of apps
          Anchor hides (hidden apps lose their launcher entry) and to notice never-allowed installs. -->
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />

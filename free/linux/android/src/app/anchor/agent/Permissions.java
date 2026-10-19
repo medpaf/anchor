@@ -131,7 +131,13 @@ final class Permissions {
                             != DevicePolicyManager.PERMISSION_GRANT_STATE_DEFAULT)
                     .put("had", prefs(c).getStringSet(pkg, Collections.<String>emptySet()).contains(perm)));
         }
-        return new org.json.JSONObject()
+        org.json.JSONObject out = new org.json.JSONObject();
+        if (Usage.allowed(c)) {  // screen time: today, and the last 7 days (today included)
+            long now = System.currentTimeMillis();
+            out.put("usage_today", Usage.foreground(c, pkg, Usage.midnight(0), now));
+            out.put("usage_week", Usage.foreground(c, pkg, Usage.midnight(6), now));
+        }
+        return out
                 .put("pkg", pkg)
                 .put("label", String.valueOf(p.applicationInfo.loadLabel(pm)))
                 .put("version", p.versionName == null ? "" : p.versionName)

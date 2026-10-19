@@ -128,7 +128,7 @@ While a schedule is on, the app says something like "Hidden by its schedule unti
 
 ### App details and permissions
 
-Click an app to see its version, when it was installed and updated, and its permissions. Each permission has a switch that changes it on the phone right away. The switches are locked while the app is anchored or on its schedule.
+Click an app to see how long you used it today and over the last 7 days, its version, when it was installed and updated, and its permissions. Each permission has a switch that changes it on the phone right away. The switches are locked while the app is anchored or on its schedule.
 
 <img src="docs/screenshots/details.png" width="600" alt="An app's details, with switches for its permissions">
 
@@ -140,7 +140,7 @@ Android doesn't let anyone hide a few core apps (Phone, the default SMS app, the
 
 The key that releases your apps is in Menu → Backup key…. It's also saved in `~/.local/share/anchor/key.json` on Linux and `%APPDATA%\Anchor\key.json` on Windows.
 
-Save a copy right after setting up your phone, somewhere you can't get to on a whim, like a password manager or a note in a drawer. If you set up Anchor on a new or reinstalled computer, connect the phone and enter the key with Menu → Use a backup key….
+Save a copy right after setting up your phone, somewhere you can't get to on a whim, like a password manager or a note in a drawer. Backup key… → Save as PDF… gives you a one-page PDF with the key and how to use it, ready to print. If you set up Anchor on a new or reinstalled computer, connect the phone and enter the key with Menu → Use a backup key….
 
 If you lose both the computer and the key, the only way to get your apps back is a factory reset.
 
@@ -152,11 +152,13 @@ Open the desktop app and go to Menu → Remove Anchor from phone…. Every hidde
 
 ### Removing Anchor from the computer
 
-Remove Anchor from the phone first. Uninstalling the desktop app on Linux deletes the key, and without it a phone that still has apps anchored can only be fixed with a factory reset.
+If you're done with Anchor for good, remove it from the phone first.
 
-On Linux, open Anchor and go to Menu → Uninstall Anchor from this computer…. It deletes the key, asks for your password and removes the app.
+On Linux, open Anchor and go to Menu → Uninstall Anchor from this computer…. It asks for your password and removes the app.
 
-On Windows, go to Settings → Apps → Installed apps, find Anchor and click Uninstall. The key stays in `%APPDATA%\Anchor`, so a reinstall picks up where you left off. Delete that folder too if you're done with Anchor for good.
+On Windows, go to Settings → Apps → Installed apps, find Anchor and click Uninstall.
+
+Uninstalling keeps your key (in `~/.local/share/anchor` on Linux and `%APPDATA%\Anchor` on Windows), so a reinstall picks up where you left off and can still release your phone. Delete that folder too if you've removed Anchor from the phone and you're done with it.
 
 ## Privacy
 

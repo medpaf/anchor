@@ -23,9 +23,10 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import adbclient as ac  # noqa: E402
 import catalog  # noqa: E402
+import keysheet  # noqa: E402
 import updates  # noqa: E402
 from permnames import friendly  # noqa: E402
-from timetext import DAY_NAMES, clock, countdown, days_text, hours_text, plural  # noqa: E402
+from timetext import DAY_NAMES, clock, countdown, days_text, hours_text, plural, screen_time  # noqa: E402
 
 APP_ID = "app.anchor.Desktop"
 APK = HERE / "anchor-agent.apk"
@@ -230,6 +231,51 @@ class _HeaderText:
     def get_label(self):
         return self.row.get_title() if self.part == "title" else self.row.get_subtitle()
 
+
+def write_key_pdf(path, items):
+    """Draws the backup key page (keysheet.page) as a one-page A4 PDF with cairo."""
+    import cairo  # comes with PyGObject
+
+    width, height, margin = 595, 842, 64
+    surface = cairo.PDFSurface(str(path), width, height)
+    cr = cairo.Context(surface)
+    styles = {  # size, bold, monospace, space before
+        "title": (24, True, False, 0), "key": (16, True, True, 22), "small": (10, False, False, 14),
+        "heading": (13, True, False, 22), "text": (11, False, False, 8),
+    }
+    y = margin
+    for style, text in items:
+        size, bold, mono, before = styles[style]
+        cr.select_font_face("Monospace" if mono else "Sans", cairo.FONT_SLANT_NORMAL,
+                            cairo.FONT_WEIGHT_BOLD if bold else cairo.FONT_WEIGHT_NORMAL)
+        cr.set_font_size(size)
+        lines, line = [], ""
+        for word in text.split():
+            trial = f"{line} {word}".strip()
+            if line and cr.text_extents(trial).x_advance > width - 2 * margin - (32 if mono else 0):
+                lines.append(line)
+                line = word
+            else:
+                line = trial
+        lines.append(line)
+        y += before
+        step = size * 1.45
+        if style == "key":  # the key on a light box, easy to read and copy
+            cr.set_source_rgb(0.94, 0.92, 0.98)
+            cr.rectangle(margin, y, width - 2 * margin, step * len(lines) + 28)
+            cr.fill()
+            y += 14
+        if style == "small":
+            cr.set_source_rgb(0.33, 0.33, 0.38)
+        else:
+            cr.set_source_rgb(0.08, 0.07, 0.1)
+        for ln in lines:
+            cr.move_to(margin + (16 if mono else 0), y + size)
+            cr.show_text(ln)
+            y += step
+        if style == "key":
+            y += 14
+    surface.finish()
 
 class AnchorWindow(Adw.ApplicationWindow):
     def __init__(self, app):
@@ -1494,6 +1540,8 @@ class AnchorWindow(Adw.ApplicationWindow):
 
         rows = [
             ("Status", self.status_text(info["pkg"])),
+            *([("Screen time today", screen_time(info["usage_today"])),
+               ("Screen time, last 7 days", screen_time(info.get("usage_week")))] if "usage_today" in info else []),
             ("Version", info.get("version") or "—"),
             ("Installed", date(info.get("installed"))),
             ("Last updated", date(info.get("updated"))),
@@ -1805,6 +1853,7 @@ class AnchorWindow(Adw.ApplicationWindow):
         key = Gtk.Label(label=ac.KeyStore.format(self.keys.token), selectable=True, wrap=True)
         key.add_css_class("key-label")
         d.set_extra_child(key)
+        d.add_response("save", "Save as PDF…")
         d.add_response("copy", "Copy")
         d.add_response("close", "Close")
         d.set_default_response("close")
@@ -1813,9 +1862,37 @@ class AnchorWindow(Adw.ApplicationWindow):
             if rid == "copy":
                 self.get_clipboard().set(ac.KeyStore.format(self.keys.token))
                 self.toast("Backup key copied")
+            elif rid == "save":
+                self.on_save_key_pdf()
 
         d.connect("response", response)
         d.present(self)
+
+    def on_save_key_pdf(self):
+        """A printable page with the key, saved where you choose (Documents by default), so it's kept
+        even if Anchor is uninstalled from this computer."""
+        dialog = Gtk.FileDialog(title="Save your backup key", initial_name=keysheet.FILENAME)
+        docs = GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_DOCUMENTS)
+        if docs:
+            dialog.set_initial_folder(Gio.File.new_for_path(docs))
+
+        def chosen(dlg, result):
+            try:
+                file = dlg.save_finish(result)
+            except GLib.Error:
+                return  # cancelled
+            self.save_key_pdf(file.get_path())
+
+        dialog.save(self, None, chosen)
+
+    def save_key_pdf(self, path):
+        phone = self.model if self.model and self.model != "your phone" else ""
+        try:
+            write_key_pdf(path, keysheet.page(ac.KeyStore.format(self.keys.token), phone))
+        except Exception as e:  # noqa: BLE001 - a folder you can't write to, a full disk…
+            self.error_dialog("Couldn't save the backup key", str(e))
+            return
+        self.toast(f"Backup key saved as {Path(path).name}")
 
     def on_import(self):
         d = Adw.AlertDialog.new(
@@ -1889,11 +1966,9 @@ class AnchorWindow(Adw.ApplicationWindow):
     def on_uninstall_desktop(self):
         d = Adw.AlertDialog.new(
             "Uninstall Anchor from this computer?",
-            "This removes the Anchor app, its launcher and your saved key from this computer. "
-            "It does not touch your phone.\n\n"
-            "If a phone is still anchored to this computer, remove Anchor from the phone first "
-            "(the option above). Uninstalling deletes the key, and without it a phone that is "
-            "still anchored can only be recovered with a factory reset.")
+            "This removes the Anchor app and its launcher from this computer. It does not touch your phone.\n\n"
+            "Your backup key stays in ~/.local/share/anchor, so Anchor can still release your phone "
+            "if you install it again. Keep a copy elsewhere too: Menu → Backup key… → Save as PDF….")
         d.add_response("cancel", "Cancel")
         d.add_response("uninstall", "Uninstall")
         d.set_response_appearance("uninstall", Adw.ResponseAppearance.DESTRUCTIVE)
@@ -1906,8 +1981,9 @@ class AnchorWindow(Adw.ApplicationWindow):
 
             def work():
                 data_home = Path(GLib.get_user_data_dir())
-                if PACKAGED:  # installed from the .deb: remove the key, then the package itself
-                    shutil.rmtree(data_home / "anchor", ignore_errors=True)
+                # The backup key (data_home / "anchor") is kept on purpose: without it, a phone that
+                # is still anchored could only be recovered with a factory reset.
+                if PACKAGED:  # installed from the .deb: remove the package
                     if not (shutil.which("pkexec") and os.access(UNINSTALL_HELPER, os.X_OK)):
                         return "package"
                     code = subprocess.run(["pkexec", "--disable-internal-agent", UNINSTALL_HELPER],
@@ -1918,7 +1994,6 @@ class AnchorWindow(Adw.ApplicationWindow):
                     Path.home() / ".local" / "bin" / "anchor",
                     data_home / "applications" / f"{APP_ID}.desktop",
                     data_home / "icons" / "hicolor" / "scalable" / "apps" / f"{APP_ID}.svg",
-                    data_home / "anchor",  # the saved key and settings
                 ]
                 for p in targets:
                     try:
@@ -1943,7 +2018,7 @@ class AnchorWindow(Adw.ApplicationWindow):
             def done(system_removed):
                 msg = "Anchor has been removed from this computer."
                 if system_removed == "package":  # the password prompt was cancelled or failed
-                    msg = ("Your saved key was removed, but the Anchor app itself is still installed. "
+                    msg = ("The Anchor app is still installed (your backup key is kept). "
                            "To remove it, run:\nsudo apt remove anchor")
                 elif not system_removed:
                     msg += ("\n\nThe system password-prompt files were left in place. "

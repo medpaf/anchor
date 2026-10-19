@@ -8,6 +8,18 @@ def plural(n, word):
     return f"{n} {word}" + ("" if n == 1 else "s")
 
 
+def screen_time(ms):
+    """How long an app was on screen: "1 h 5 min", "45 min", "Less than a minute" or "Not used"."""
+    minutes = int(ms or 0) // 60_000
+    if not ms or ms <= 0:
+        return "Not used"
+    if minutes < 1:
+        return "Less than a minute"
+    if minutes < 60:
+        return f"{minutes} min"
+    return f"{minutes // 60} h" + (f" {minutes % 60} min" if minutes % 60 else "")
+
+
 DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
 

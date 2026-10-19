@@ -16,7 +16,7 @@ DIST="$LINUX/dist"
 rm -rf -- "$STAGE" "$DIST"
 mkdir -p "$STAGE" "$DIST"
 
-APP_FILES=(desktop/anchor.py desktop/adbclient.py desktop/catalog.py desktop/permnames.py desktop/placeholder.py
+APP_FILES=(desktop/anchor.py desktop/adbclient.py desktop/catalog.py desktop/keysheet.py desktop/permnames.py desktop/placeholder.py
            desktop/timetext.py desktop/updates.py desktop/anchor-agent.apk desktop/placeholder-manifest.bin)
 # Builds made by GitHub record their commit, so Menu → Check for updates… can compare.
 [ -f desktop/build-commit ] && APP_FILES+=(desktop/build-commit)
