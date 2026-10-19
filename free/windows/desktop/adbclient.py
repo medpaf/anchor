@@ -16,7 +16,7 @@ import platform_support as plat
 AGENT_PKG = "app.anchor.agent"
 AGENT_ADMIN = f"{AGENT_PKG}/.AdminReceiver"
 AGENT_URI = "content://app.anchor.agent.cmd"
-AGENT_VERSION = 31  # must match CommandProvider.VERSION in the bundled APK
+AGENT_VERSION = 32  # must match CommandProvider.VERSION in the bundled APK
 
 
 class AdbError(Exception):

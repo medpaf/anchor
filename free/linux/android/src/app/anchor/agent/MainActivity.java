@@ -447,8 +447,12 @@ public class MainActivity extends Activity {
             Toast.makeText(this, "Couldn't read " + name + "'s details: " + e.getMessage(), Toast.LENGTH_LONG).show();
             return;
         }
-        final android.app.Dialog dialog = new android.app.Dialog(this);
-        LinearLayout box = dialogBox();
+        // A full screen, not a floating card: a phone has less room than the desktop's window.
+        final android.app.Dialog dialog = new android.app.Dialog(this, android.R.style.Theme_DeviceDefault_NoActionBar);
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setGravity(Gravity.CENTER_HORIZONTAL);
+        box.setBackgroundColor(BG);
         ImageView icon = new ImageView(this);
         Drawable d = appIcon(pkg);
         if (d != null) icon.setImageDrawable(d);
@@ -497,8 +501,10 @@ public class MainActivity extends Activity {
         box.addView(done, fill(dp(20)));
 
         ScrollView scroll = new ScrollView(this);
+        scroll.setBackgroundColor(BG);
+        scroll.setFillViewport(true);
         scroll.addView(box);
-        showDialog(dialog, scroll);
+        showFullScreen(dialog, scroll, box);
     }
 
     /** One switch per permission; locked while the app is blocked, since its permissions are held back. */
@@ -565,7 +571,16 @@ public class MainActivity extends Activity {
                     }
                 }
             });
-            row.addView(sw);
+            // A fixed-width slot at the row's right edge, so every switch lines up in one column.
+            sw.setShowText(false);
+            android.widget.FrameLayout slot = new android.widget.FrameLayout(this);
+            android.widget.FrameLayout.LayoutParams swLp = new android.widget.FrameLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT,
+                    Gravity.END | Gravity.CENTER_VERTICAL);
+            slot.addView(sw, swLp);
+            LinearLayout.LayoutParams slotLp = new LinearLayout.LayoutParams(dp(60), LinearLayout.LayoutParams.WRAP_CONTENT);
+            slotLp.leftMargin = dp(8);
+            row.addView(slot, slotLp);
             perms.addView(row);
         }
     }
@@ -917,6 +932,37 @@ public class MainActivity extends Activity {
                     android.view.ViewGroup.LayoutParams.WRAP_CONTENT);
             w.setDimAmount(0.7f);
         }
+        dialog.show();
+    }
+
+    /** A dialog that fills the screen, with its content kept clear of the status and navigation bars. */
+    private void showFullScreen(android.app.Dialog dialog, View content, final View padded) {
+        dialog.requestWindowFeature(android.view.Window.FEATURE_NO_TITLE);
+        dialog.setContentView(content);
+        android.view.Window w = dialog.getWindow();
+        if (w != null) {
+            w.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(BG));
+            w.setLayout(android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.MATCH_PARENT);
+            w.setStatusBarColor(BG);
+            w.setNavigationBarColor(BG);
+        }
+        padded.setPadding(dp(16), dp(28), dp(16), dp(24));
+        content.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
+            @Override
+            public android.view.WindowInsets onApplyWindowInsets(View v, android.view.WindowInsets insets) {
+                int top, bottom;
+                if (android.os.Build.VERSION.SDK_INT >= 30) {
+                    android.graphics.Insets bars = insets.getInsets(android.view.WindowInsets.Type.systemBars());
+                    top = bars.top;
+                    bottom = bars.bottom;
+                } else {
+                    top = insets.getSystemWindowInsetTop();
+                    bottom = insets.getSystemWindowInsetBottom();
+                }
+                padded.setPadding(dp(16), top + dp(28), dp(16), bottom + dp(24));
+                return insets;
+            }
+        });
         dialog.show();
     }
 
