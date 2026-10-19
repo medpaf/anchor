@@ -234,7 +234,7 @@ class _HeaderText:
 
 def write_key_pdf(path, items):
     """Draws the backup key page (keysheet.page) as a one-page A4 PDF with cairo."""
-    import cairo  # comes with PyGObject
+    import cairo  # python3-cairo (a dependency of the .deb and install.sh)
 
     width, height, margin = 595, 842, 64
     surface = cairo.PDFSurface(str(path), width, height)

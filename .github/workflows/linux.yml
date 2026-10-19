@@ -27,10 +27,20 @@ jobs:
       - name: Install what the app and its tests need
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends python3-gi gir1.2-gtk-4.0 gir1.2-adw-1 openssl xvfb
+          sudo apt-get install -y --no-install-recommends python3-gi python3-cairo gir1.2-gtk-4.0 gir1.2-adw-1 openssl xvfb
 
       - name: Tests
-        run: xvfb-run -a tests/run_tests.sh
+        run: xvfb-run -a tests/run_tests.sh 2>&1 | tee "$RUNNER_TEMP/tests.log"
+
+      # Build logs are only visible to the repository's admins; an error note is public, so the
+      # failing tests are posted as one when the tests fail.
+      - name: Show why the tests failed
+        if: failure()
+        run: |
+          log="$RUNNER_TEMP/tests.log"
+          if [ -f "$log" ]; then
+            tail -n 80 "$log" | sed -z 's/%/%25/g; s/\n/%0A/g' | sed 's/^/::error title=Linux tests failed::/'
+          fi
 
       - name: Record which commit this build is (for Menu → Check for updates…)
         run: echo "$GITHUB_SHA" > desktop/build-commit

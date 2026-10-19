@@ -85,7 +85,7 @@ Version: $VERSION
 Architecture: all
 Maintainer: Paulo Medeiros <pafmed@protonmail.com>
 Installed-Size: $SIZE
-Depends: python3 (>= 3.10), python3-gi, gir1.2-gtk-4.0, gir1.2-adw-1 (>= 1.5), adb, openssl, pkexec | policykit-1
+Depends: python3 (>= 3.10), python3-gi, python3-cairo, gir1.2-gtk-4.0, gir1.2-adw-1 (>= 1.5), adb, openssl, pkexec | policykit-1
 Section: utils
 Priority: optional
 Homepage: https://github.com/medpaf/anchor

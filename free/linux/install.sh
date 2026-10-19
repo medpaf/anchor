@@ -2,7 +2,7 @@
 # Installs Anchor for the current user: app files, a launcher entry and an `anchor` command (no sudo).
 # Then, with sudo, the polkit policy that words the Release all password prompt (optional).
 
-sudo apt install adb openssl python3-gi gir1.2-gtk-4.0 gir1.2-adw-1
+sudo apt install adb openssl python3-gi python3-cairo gir1.2-gtk-4.0 gir1.2-adw-1
 
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -13,7 +13,7 @@ if [ ! -f desktop/anchor-agent.apk ]; then
 fi
 if ! python3 -c "import gi; gi.require_version('Gtk','4.0'); gi.require_version('Adw','1')" 2>/dev/null; then
   echo "Missing GTK 4 / libadwaita for Python. Install them with:" >&2
-  echo "  sudo apt install python3-gi gir1.2-gtk-4.0 gir1.2-adw-1" >&2
+  echo "  sudo apt install python3-gi python3-cairo gir1.2-gtk-4.0 gir1.2-adw-1" >&2
   exit 1
 fi
 if ! command -v adb >/dev/null && [ ! -x "$HOME/Android/Sdk/platform-tools/adb" ]; then

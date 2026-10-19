@@ -684,11 +684,14 @@ public class MainActivity extends Activity {
      */
     private void styleSwitch(android.widget.Switch sw) {
         int[][] states = {{-android.R.attr.state_enabled}, {android.R.attr.state_checked}, {}};
-        GradientDrawable thumb = new GradientDrawable();
-        thumb.setShape(GradientDrawable.OVAL);
-        thumb.setSize(dp(26), dp(26));
-        thumb.setColor(new ColorStateList(states, new int[]{0xFF6E6880, 0xFFFFFFFF, 0xFFE6E1F0}));
-        thumb.setStroke(dp(3), 0x00000000);  // a transparent ring keeps the knob inside the track
+        // The knob sits inside the track (3dp all round), so a switch takes the same space on or off:
+        // Android's own knob is bigger than its track and sticks out left or right, which made the
+        // switches look shifted from one row to the next.
+        GradientDrawable knob = new GradientDrawable();
+        knob.setShape(GradientDrawable.OVAL);
+        knob.setSize(dp(20), dp(20));
+        knob.setColor(new ColorStateList(states, new int[]{0xFF6E6880, 0xFFFFFFFF, 0xFFE6E1F0}));
+        android.graphics.drawable.InsetDrawable thumb = new android.graphics.drawable.InsetDrawable(knob, dp(3));
         GradientDrawable track = new GradientDrawable();
         track.setSize(dp(52), dp(26));
         track.setCornerRadius(dp(13));
