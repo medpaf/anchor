@@ -427,6 +427,43 @@ class GuiTest(unittest.TestCase):
         self.assertIn("Instagram uninstalled", self.toasts)
         self.assertEqual(self.win.other_title.get_label(), f"Your apps ({len(self.win.rows)})", "count updated")
 
+    def test_never_allowing_an_app_on_the_phone_asks_then_uninstalls_it(self):
+        phone = self.ready_phone()
+        self.open(phone)
+        self.wait_page("main")
+        self.win.add_install_blocks([{"pkg": INSTAGRAM, "name": "Instagram"}])
+        self.assertEqual(self.dialogs[-1].get_heading(), "Uninstall Instagram?")
+        self.dialogs[-1].emit("response", "uninstall")
+        self.pump(lambda: INSTAGRAM in phone.placeholders and not self.win.placing, what="uninstall, then placeholder")
+        self.assertNotIn(INSTAGRAM, phone.apps)
+        self.assertIn(INSTAGRAM, {a["pkg"] for a in phone.install_blocks})
+        self.assertNotIn(INSTAGRAM, phone.kept, "it was uninstalled first, so it isn't left alone")
+        self.assertIn("Instagram uninstalled and added to Never allow", self.toasts)
+        self.assertFalse(phone.install(INSTAGRAM, "Instagram"))
+
+    def test_never_allowing_an_app_on_the_phone_can_be_cancelled(self):
+        phone = self.ready_phone()
+        self.open(phone)
+        self.wait_page("main")
+        self.win.add_install_blocks([{"pkg": INSTAGRAM, "name": "Instagram"}])
+        self.dialogs[-1].emit("response", "cancel")
+        self.pump(lambda: False, timeout=0.3, fail=False)
+        self.assertIn(INSTAGRAM, phone.apps)
+        self.assertEqual(phone.install_blocks, [], "nothing is added")
+
+    def test_never_allowing_an_anchored_or_system_app_doesnt_uninstall_it(self):
+        phone = self.ready_phone()
+        phone.selected, phone.shifted = {INSTAGRAM}, True
+        phone._apply()
+        self.open(phone)
+        self.wait_page("main")
+        before = len(self.dialogs)
+        self.win.add_install_blocks([{"pkg": INSTAGRAM, "name": "Instagram"}, {"pkg": YOUTUBE, "name": "YouTube"}])
+        self.pump(lambda: len(phone.install_blocks) == 2, what="added")
+        self.assertEqual(len(self.dialogs), before, "no question")
+        self.assertIn(INSTAGRAM, phone.apps)
+        self.assertIn(YOUTUBE, phone.apps)
+
     def test_uninstall_needs_confirmation_in_the_list(self):
         phone = self.ready_phone()
         self.open(phone)

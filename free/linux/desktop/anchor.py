@@ -657,12 +657,68 @@ class AnchorWindow(Adw.ApplicationWindow):
         names = new[0]["name"] if len(new) == 1 else plural(len(new), "app")
         for a in new:
             self.placeholder_failed.pop(a["pkg"], None)
+        on_phone = [a for a in new if self.uninstalls_when_never_allowed(a["pkg"])]
+        if on_phone:
+            self.confirm_never_allow_uninstall(new, on_phone)
+            return
         self.save_install_blocks(self.install_blocks + new, f"{names} added to Never allow")
+
+    def uninstalls_when_never_allowed(self, pkg):
+        """On the phone, installed by the user and not anchored: adding it to Never allow uninstalls it."""
+        row = self.rows.get(pkg)
+        return bool(row and row.uninstall_button and pkg not in self.selected)
+
+    def confirm_never_allow_uninstall(self, new, on_phone):
+        """Asks before uninstalling apps that are on the phone, then uninstalls them and adds them all."""
+        one = len(on_phone) == 1
+        names = on_phone[0]["name"] if one else (", ".join(a["name"] for a in on_phone[:-1])
+                                                 + " and " + on_phone[-1]["name"])
+        it, its = ("it", "its") if one else ("them", "their")
+        d = Adw.AlertDialog.new(f"Uninstall {names}?",
+                                f"{names} {'is' if one else 'are'} on your phone. Adding {it} to Never allow "
+                                f"uninstalls {it}, with {its} data, and stops {it} from being installed again "
+                                f"until you release {it} here.")
+        d.add_response("cancel", "Cancel")
+        d.add_response("uninstall", "Uninstall")
+        d.set_response_appearance("uninstall", Adw.ResponseAppearance.DESTRUCTIVE)
+        d.set_close_response("cancel")
+
+        def response(_d, rid):
+            if rid != "uninstall":
+                return
+            agent, token, blocks = self.agent, self.keys.token, self.install_blocks + new
+            self.working = True
+
+            def work():
+                for a in on_phone:
+                    agent.uninstall_app(token, a["pkg"])
+                for _ in range(40):  # the phone uninstalls in the background
+                    if not any(agent.installed_package(a["pkg"]) for a in on_phone):
+                        break
+                    time.sleep(0.25)
+                return agent.set_install_blocks(token, blocks)
+
+            def done(st):
+                self.working = False
+                self.apply_status(st)
+                self.toast(f"{names} uninstalled and added to Never allow")
+                self.reload_apps()
+                self.ensure_placeholders()
+
+            def fail(e):
+                self.working = False
+                self.error_dialog(f"Couldn't uninstall {names}", str(e))
+                self.reload_apps()
+
+            in_background(work, done, fail)
+
+        d.connect("response", response)
+        d.present(self)
 
     def on_add_install_block(self):
         d = Adw.AlertDialog.new("Never allow an app",
                                 "It can't be used on your phone, even if you install it, until you release "
-                                "it here. Apps already on your phone aren't affected.")
+                                "it here. If it's on your phone, Anchor asks before uninstalling it.")
         content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
         entry = Gtk.Entry(placeholder_text="Play Store link or package name", activates_default=True)
         content.append(entry)

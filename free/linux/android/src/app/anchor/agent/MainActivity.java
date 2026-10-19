@@ -331,6 +331,15 @@ public class MainActivity extends Activity {
         row.setGravity(Gravity.CENTER_VERTICAL);
         row.setPadding(dp(16), dp(10), dp(14), dp(10));
         if (withIcon) {
+            // Like the desktop: tapping an app shows its details and permissions.
+            row.setBackground(new android.graphics.drawable.RippleDrawable(ColorStateList.valueOf(0x228B5CF6), null,
+                    new android.graphics.drawable.ColorDrawable(0xFFFFFFFF)));
+            row.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    showDetails(pkg, name);
+                }
+            });
             ImageView icon = new ImageView(this);
             Drawable d = appIcon(pkg);
             if (d != null) icon.setImageDrawable(d);
@@ -427,6 +436,201 @@ public class MainActivity extends Activity {
                         uninstallApp(pkg, name);
                     }
                 });
+    }
+
+    /** An app's details and permissions, like the desktop's details window. */
+    private void showDetails(final String pkg, final String name) {
+        final org.json.JSONObject info;
+        try {
+            info = Permissions.info(this, pkg);
+        } catch (Exception e) {
+            Toast.makeText(this, "Couldn't read " + name + "'s details: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            return;
+        }
+        final android.app.Dialog dialog = new android.app.Dialog(this);
+        LinearLayout box = dialogBox();
+        ImageView icon = new ImageView(this);
+        Drawable d = appIcon(pkg);
+        if (d != null) icon.setImageDrawable(d);
+        box.addView(icon, new LinearLayout.LayoutParams(dp(64), dp(64)));
+        box.addView(dialogHeading(name), centered(dp(12)));
+        TextView pkgText = dialogText(pkg);
+        pkgText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        pkgText.setTextIsSelectable(true);
+        box.addView(pkgText, centered(dp(2)));
+
+        box.addView(groupTitle("About"), fill(dp(20)));
+        LinearLayout about = new LinearLayout(this);
+        about.setOrientation(LinearLayout.VERTICAL);
+        about.setBackground(cardWithBorder(CARD, 0x0FFFFFFF, dp(16)));
+        String[][] facts = {
+                {"Status", statusText(pkg)},
+                {"Version", info.optString("version").isEmpty() ? "—" : info.optString("version")},
+                {"Installed", date(info.optLong("installed"))},
+                {"Last updated", date(info.optLong("updated"))},
+                {"Type", info.optBoolean("system") ? "Came with the phone" : "Installed by you"},
+        };
+        for (int i = 0; i < facts.length; i++) {
+            if (i > 0) about.addView(divider());
+            about.addView(fact(facts[i][0], facts[i][1]));
+        }
+        box.addView(about, fill(dp(8)));
+
+        box.addView(groupTitle("Permissions"), fill(dp(20)));
+        final LinearLayout perms = new LinearLayout(this);
+        perms.setOrientation(LinearLayout.VERTICAL);
+        final TextView permsNote = new TextView(this);
+        permsNote.setTextColor(DIM);
+        permsNote.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        permsNote.setLineSpacing(0, 1.2f);
+        box.addView(permsNote, fill(dp(2)));
+        box.addView(perms, fill(dp(8)));
+        fillPermissions(perms, permsNote, pkg, name, info);
+
+        Button done = pillButton("Done", false);
+        done.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                dialog.dismiss();
+            }
+        });
+        box.addView(done, fill(dp(20)));
+
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(box);
+        showDialog(dialog, scroll);
+    }
+
+    /** One switch per permission; locked while the app is blocked, since its permissions are held back. */
+    private void fillPermissions(final LinearLayout perms, TextView note, final String pkg, final String name,
+                                 org.json.JSONObject info) {
+        perms.removeAllViews();
+        boolean blocked = info.optBoolean("blocked");
+        note.setText(blocked
+                ? "Permissions are removed while " + name + " is blocked, and come back when your computer releases it."
+                : "Changes apply right away. You can still change them in the phone's Settings.");
+        org.json.JSONArray list = info.optJSONArray("permissions");
+        if (list == null || list.length() == 0) {
+            perms.setBackground(cardWithBorder(CARD, 0x0FFFFFFF, dp(16)));
+            perms.addView(fact("No permissions to manage", name + " doesn't ask for any permissions you grant."));
+            return;
+        }
+        List<Object[]> rows = new ArrayList<>();
+        for (int i = 0; i < list.length(); i++) {
+            org.json.JSONObject p = list.optJSONObject(i);
+            String[] names = PermNames.friendly(p.optString("name"), p.optString("label"));
+            rows.add(new Object[]{names[0], names[1], p});
+        }
+        Collections.sort(rows, new Comparator<Object[]>() {
+            @Override
+            public int compare(Object[] a, Object[] b) {
+                return ((String) a[0]).compareToIgnoreCase((String) b[0]);
+            }
+        });
+        perms.setBackground(cardWithBorder(CARD, 0x0FFFFFFF, dp(16)));
+        for (Object[] r : rows) {
+            final org.json.JSONObject p = (org.json.JSONObject) r[2];
+            final String titleText = (String) r[0];
+            String subtitle = (String) r[1];
+            if (blocked && p.optBoolean("had")) {
+                subtitle = subtitle.isEmpty() ? "Comes back when released" : subtitle + " · comes back when released";
+            }
+            if (perms.getChildCount() > 0) perms.addView(divider());
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setPadding(dp(14), dp(10), dp(10), dp(10));
+            row.addView(twoLines(titleText, subtitle, TEXT),
+                    new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+            final android.widget.Switch sw = new android.widget.Switch(this);
+            sw.setChecked(p.optBoolean("granted"));
+            sw.setEnabled(!blocked);
+            int[][] states = {{-android.R.attr.state_enabled}, {android.R.attr.state_checked}, {}};
+            sw.setThumbTintList(new ColorStateList(states, new int[]{0xFF5E5870, 0xFFF4F0FF, 0xFFF4F0FF}));
+            sw.setTrackTintList(new ColorStateList(states, new int[]{0x14FFFFFF, 0xFF7C3AED, 0x1FFFFFFF}));
+            sw.setContentDescription(titleText);
+            sw.setOnCheckedChangeListener(new android.widget.CompoundButton.OnCheckedChangeListener() {
+                @Override
+                public void onCheckedChanged(android.widget.CompoundButton b, boolean grant) {
+                    try {
+                        Permissions.set(MainActivity.this, pkg, p.optString("name"), grant);
+                        Toast.makeText(MainActivity.this, titleText + ": " + (grant ? "allowed" : "removed")
+                                + " for " + name, Toast.LENGTH_SHORT).show();
+                    } catch (RuntimeException e) {
+                        b.setOnCheckedChangeListener(null);
+                        b.setChecked(!grant);
+                        b.setOnCheckedChangeListener(this);
+                        Toast.makeText(MainActivity.this, "Couldn't change that permission: " + e.getMessage(),
+                                Toast.LENGTH_LONG).show();
+                    }
+                }
+            });
+            row.addView(sw);
+            perms.addView(row);
+        }
+    }
+
+    /** Like the desktop's status line in the details window. */
+    private String statusText(String pkg) {
+        long now = System.currentTimeMillis();
+        if (Core.mode(this, now) != null && Core.selected(this).contains(pkg)) return "Anchored: hidden from this phone";
+        Long until = Core.scheduledNow(this, now).get(pkg);
+        if (until != null) return "Hidden by its schedule until " + time(until, now);
+        if (!schedulesFor(pkg).isEmpty()) return "Has a schedule";
+        return "Not anchored";
+    }
+
+    private String date(long ms) {
+        return ms > 0 ? android.text.format.DateFormat.getMediumDateFormat(this).format(new java.util.Date(ms)) : "—";
+    }
+
+    /** A property, like the desktop's: the name small and dim, the value below it. */
+    private View fact(String name, String value) {
+        LinearLayout row = new LinearLayout(this);
+        row.setPadding(dp(14), dp(10), dp(14), dp(10));
+        TextView n = new TextView(this);
+        n.setText(name);
+        n.setTextColor(DIM);
+        n.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        TextView v = new TextView(this);
+        v.setText(value);
+        v.setTextColor(TEXT);
+        v.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        v.setTextIsSelectable(true);
+        LinearLayout col = new LinearLayout(this);
+        col.setOrientation(LinearLayout.VERTICAL);
+        col.addView(n);
+        col.addView(v);
+        row.addView(col);
+        return row;
+    }
+
+    private LinearLayout twoLines(String top, String bottom, int topColor) {
+        LinearLayout col = new LinearLayout(this);
+        col.setOrientation(LinearLayout.VERTICAL);
+        TextView t = new TextView(this);
+        t.setText(top);
+        t.setTextColor(topColor);
+        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        col.addView(t);
+        if (!bottom.isEmpty()) {
+            TextView b = new TextView(this);
+            b.setText(bottom);
+            b.setTextColor(DIM);
+            b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+            col.addView(b);
+        }
+        return col;
+    }
+
+    private TextView groupTitle(String text) {
+        TextView t = new TextView(this);
+        t.setText(text);
+        t.setTextColor(TEXT);
+        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        t.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
+        t.setPadding(dp(4), 0, 0, 0);
+        return t;
     }
 
     /** A question about one app: its icon on a soft violet glow, a heading, a sentence, Cancel and an action. */
