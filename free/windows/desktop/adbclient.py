@@ -229,10 +229,10 @@ class Agent:
 
         return self.call("schedules", token=token, schedules=schedules)
 
-    def install_placeholder(self, package):
-
+    def install_placeholder(self, package, name=None):
         import placeholder
-        path = placeholder.write_apk(package)
+        label = f"{name} - Blocked" if name else None
+        path = placeholder.write_apk(package, label)
         try:
             _, out = self.adb.run(["install", str(path)], serial=self.serial, timeout=120)
         finally:

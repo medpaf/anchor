@@ -11,6 +11,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 TEMPLATE = HERE / "placeholder-manifest.bin"
 TEMPLATE_PACKAGE = "app.anchor.placeholder.template"
+TEMPLATE_LABEL = "Blocked by Anchor"
 
 RES_STRING_POOL_TYPE = 0x0001
 UTF8_FLAG = 1 << 8
@@ -74,8 +75,7 @@ def _build_pool(strings, flags):
                          strings_start, 0)
     return header + struct.pack(f"<{len(strings)}I", *offsets) + bytes(data)
 
-def manifest_for(package):
-
+def manifest_for(package, label=None):
     axml = TEMPLATE.read_bytes()
     xml_type, xml_header, _xml_size = struct.unpack_from("<HHI", axml, 0)
     if xml_type != 0x0003:
@@ -85,7 +85,15 @@ def manifest_for(package):
     strings, flags, _ = _parse_pool(pool)
     if TEMPLATE_PACKAGE not in strings:
         raise PlaceholderError("the template's package name is missing; rebuild with android/build.sh")
-    strings = [package if s == TEMPLATE_PACKAGE else s for s in strings]
+
+    def swap(s):
+        if s == TEMPLATE_PACKAGE:
+            return package
+        if label and s == TEMPLATE_LABEL:
+            return label
+        return s
+
+    strings = [swap(s) for s in strings]
     new_pool = _build_pool(strings, flags)
     rest = axml[xml_header + pool_size:]
     body = new_pool + rest
@@ -117,9 +125,8 @@ def _openssl(args, data=None):
 def _b64sha256(data):
     return base64.b64encode(hashlib.sha256(data).digest()).decode()
 
-def build_apk(package):
-
-    manifest_xml = manifest_for(package)
+def build_apk(package, label=None):
+    manifest_xml = manifest_for(package, label)
     entry = f"Name: AndroidManifest.xml\r\nSHA-256-Digest: {_b64sha256(manifest_xml)}\r\n\r\n".encode()
     mf = b"Manifest-Version: 1.0\r\nCreated-By: Anchor\r\n\r\n" + entry
     sf = (f"Signature-Version: 1.0\r\nSHA-256-Digest-Manifest: {_b64sha256(mf)}\r\n"
@@ -135,9 +142,8 @@ def build_apk(package):
         z.writestr("META-INF/ANCHOR.RSA", signature)
     return buf.getvalue()
 
-def write_apk(package, directory=None):
-
+def write_apk(package, label=None, directory=None):
     fd, path = tempfile.mkstemp(prefix="anchor-placeholder-", suffix=".apk", dir=directory)
     with os.fdopen(fd, "wb") as f:
-        f.write(build_apk(package))
+        f.write(build_apk(package, label))
     return Path(path)

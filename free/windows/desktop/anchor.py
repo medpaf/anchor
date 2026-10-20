@@ -499,12 +499,13 @@ class AnchorWindow(QMainWindow):
         agent, token = self.agent, self.keys.token
         self.placing = True
         self.update_never_allow()
+        names = {a["pkg"]: a["name"] for a in self.install_blocks}
 
         def work():
             failed = {}
             for pkg in missing:
                 try:
-                    agent.install_placeholder(pkg)
+                    agent.install_placeholder(pkg, names.get(pkg))
                 except Exception as e:
                     failed[pkg] = str(e)
             return failed, agent.status(token)

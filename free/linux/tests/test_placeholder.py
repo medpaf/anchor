@@ -29,7 +29,7 @@ class PlaceholderTest(unittest.TestCase):
     def test_names_the_blocked_app(self):
         for pkg in ("com.reddit.frontpage", "com.zhiliaoapp.musically", "x.y"):
             with self.subTest(pkg=pkg):
-                path = placeholder.write_apk(pkg, self.tmp.name)
+                path = placeholder.write_apk(pkg, directory=self.tmp.name)
                 self.assertEqual(placeholder_package(path), pkg)
 
     def test_signed_with_a_key_made_once(self):
@@ -41,7 +41,7 @@ class PlaceholderTest(unittest.TestCase):
         self.assertEqual(cert.read_bytes(), first, "the same key signs every placeholder")
 
     def test_signature_matches_the_contents(self):
-        path = placeholder.write_apk("com.reddit.frontpage", self.tmp.name)
+        path = placeholder.write_apk("com.reddit.frontpage", directory=self.tmp.name)
         with zipfile.ZipFile(path) as z:
             sf, sig = z.read("META-INF/ANCHOR.SF"), z.read("META-INF/ANCHOR.RSA")
         _, cert = placeholder.ensure_key()
@@ -54,7 +54,7 @@ class PlaceholderTest(unittest.TestCase):
 
     @unittest.skipUnless(build_tool("apksigner") and shutil.which("java"), "needs the Android SDK and a JDK")
     def test_android_accepts_the_apk(self):
-        path = placeholder.write_apk("com.reddit.frontpage", self.tmp.name)
+        path = placeholder.write_apk("com.reddit.frontpage", directory=self.tmp.name)
         p = subprocess.run([str(build_tool("apksigner")), "verify", "--min-sdk-version", "24", str(path)],
                            capture_output=True, text=True)
         self.assertEqual(p.returncode, 0, p.stdout + p.stderr)

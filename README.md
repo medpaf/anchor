@@ -116,7 +116,7 @@ You can also anchor apps, add schedules and uninstall apps from the Anchor app o
 
 Apps on this list can't be installed on the phone, whether from the Play Store or anywhere else. The list starts empty. To add one, click "Add an app…" and pick it from the suggestions, or paste a Play Store link or a package name. If the app is already on your phone, Anchor asks before uninstalling it. To take an app off the list, click Release next to it.
 
-In the phone's settings, these apps show up as "Blocked by Anchor". Those are tiny placeholder apps Anchor installs to stop the real ones from being installed.
+In the phone's settings, these apps show up as "<app name> - Blocked" (for example "Reddit - Blocked"). Those are tiny placeholder apps Anchor installs to stop the real ones from being installed.
 
 <img src="docs/screenshots/never-allow.png" width="600" alt="The Never allow list, with apps that can't be installed">
 
