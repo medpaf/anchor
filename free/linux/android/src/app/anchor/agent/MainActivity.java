@@ -473,7 +473,7 @@ public class MainActivity extends Activity {
             anchor.setMinimumWidth(0);
             anchor.setPadding(dp(18), dp(8), dp(18), dp(8));
             GradientDrawable bg = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                    new int[]{0xFF9B6DFF, 0xFF6D28D9});
+                    new int[]{0xFF6A47B5, 0xFF6A47B5});
             bg.setCornerRadius(dp(99));
             anchor.setBackground(bg);
             anchor.setStateListAnimator(null);
@@ -1036,7 +1036,7 @@ public class MainActivity extends Activity {
 
     private void styleDay(TextView chip, boolean on) {
         GradientDrawable bg = on
-                ? new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{0xFF9B6DFF, 0xFF6D28D9})
+                ? new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{0xFF6A47B5, 0xFF6A47B5})
                 : new GradientDrawable();
         if (!on) bg.setColor(0x14FFFFFF);
         bg.setCornerRadius(dp(12));
@@ -1184,7 +1184,7 @@ public class MainActivity extends Activity {
         b.setStateListAnimator(null);
         GradientDrawable bg;
         if (primary) {
-            bg = new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{0xFF9B6DFF, 0xFF6D28D9});
+            bg = new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{0xFF6A47B5, 0xFF6A47B5});
         } else {
             bg = new GradientDrawable();
             bg.setColor(0x0AFFFFFF);

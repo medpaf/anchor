@@ -82,13 +82,13 @@ headerbar .subtitle { color: alpha(@window_fg_color, 0.5); }
   padding: 9px 30px; border-radius: 999px;
   font-size: 1.02em; font-weight: 800; letter-spacing: 0.2px;
   color: white;
-  background-image: linear-gradient(135deg, #9B6DFF, #6D28D9);
+  background-color: #6A47B5;
   box-shadow: none;
   border: none;
 }
 .setup-cta { padding: 12px 48px; font-size: 1.1em; }
-.cta:hover { background-image: linear-gradient(135deg, #AA82FF, #7C3AED); }
-.cta:active { background-image: linear-gradient(135deg, #8B5CF6, #5B21B6); }
+.cta:hover { background-color: #7857C2; }
+.cta:active { background-color: #5A3AA0; }
 .cta:disabled { background-image: none; background-color: alpha(white, 0.06);
                 color: alpha(white, 0.32); box-shadow: none; }
 .cta.release {
@@ -133,9 +133,9 @@ switch slider { background-color: #F4F0FF; }
 .pill-small:hover { background-color: alpha(#8B5CF6, 0.16); }
 .never-allow image { color: #C4B5FD; }
 .row-anchor { border-radius: 999px; padding: 5px 16px; font-weight: 800; font-size: 0.92em; color: white;
-              background-image: linear-gradient(135deg, #9B6DFF, #6D28D9); border: none;
+              background-color: #6A47B5; border: none;
               box-shadow: none; min-width: 64px; }
-.row-anchor:hover { background-image: linear-gradient(135deg, #AA82FF, #7C3AED); }
+.row-anchor:hover { background-color: #7857C2; }
 .row-anchor.release { background-image: none; background-color: alpha(white, 0.04); color: #E4DBFF;
                       box-shadow: inset 0 0 0 1px alpha(#A78BFA, 0.65); }
 .row-anchor.release:hover { background-color: alpha(#8B5CF6, 0.16); }
@@ -156,7 +156,7 @@ toast { background-color: #241C33; color: #F1ECFF; border-radius: 999px;
 .step-number { min-width: 28px; min-height: 28px; border-radius: 99px;
                background-color: alpha(#8B5CF6, 0.2); color: #C4B5FD; font-weight: 800; }
 .day-toggle { min-width: 42px; padding-left: 4px; padding-right: 4px; font-weight: 700; }
-.day-toggle:checked { background-image: linear-gradient(135deg, #9B6DFF, #6D28D9); color: white; }
+.day-toggle:checked { background-color: #6A47B5; color: white; }
 .time-spin { font-size: 1.4em; font-weight: 800; }
 .key-label { font-family: monospace; font-size: 1.3em; letter-spacing: 1px; padding: 14px;
              border-radius: 14px; background-color: alpha(#8B5CF6, 0.12); color: #E4DBFF; }

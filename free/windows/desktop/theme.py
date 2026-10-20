@@ -19,9 +19,9 @@ SOFT = "#E4DBFF"
 SUCCESS = "#6EE7B7"
 ERROR = "#FCA5A5"
 
-GRADIENT = "qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #9B6DFF, stop:1 #6D28D9)"
-GRADIENT_HOVER = "qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #AA82FF, stop:1 #7C3AED)"
-GRADIENT_DOWN = "qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #8B5CF6, stop:1 #5B21B6)"
+GRADIENT = "#6A47B5"
+GRADIENT_HOVER = "#7857C2"
+GRADIENT_DOWN = "#5A3AA0"
 
 if sys.platform == "win32":
     FONTS = ["Segoe UI Variable Text", "Segoe UI", "sans-serif"]
