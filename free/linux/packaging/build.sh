@@ -1,15 +1,9 @@
 #!/usr/bin/env bash
-# Builds the Linux downloads into free/linux/dist/:
-#   anchor-linux.deb     Debian, Ubuntu, Linux Mint, Pop!_OS…   (sudo apt install ./anchor-linux.deb)
-#   anchor-linux.tar.gz  any Linux: unpack, then run ./install.sh
-#
-# Needs dpkg-deb (on any Debian-based system). Writes only inside free/linux/build and free/linux/dist.
+
 set -euo pipefail
 LINUX="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$LINUX"
 
-# Debian packages need a version number, and apt only installs a download over an older one when the
-# number went up. Anchor doesn't show one anywhere, so it's simply when the package was built.
 VERSION="1.0.$(date -u +%Y%m%d%H%M)"
 STAGE="$LINUX/build/packages"
 DIST="$LINUX/dist"
@@ -18,13 +12,12 @@ mkdir -p "$STAGE" "$DIST"
 
 APP_FILES=(desktop/anchor.py desktop/adbclient.py desktop/catalog.py desktop/keysheet.py desktop/permnames.py desktop/placeholder.py
            desktop/timetext.py desktop/updates.py desktop/anchor-agent.apk desktop/placeholder-manifest.bin)
-# Builds made by GitHub record their commit, so Menu → Check for updates… can compare.
+
 [ -f desktop/build-commit ] && APP_FILES+=(desktop/build-commit)
 for f in "${APP_FILES[@]}" desktop/icons/*.svg polkit/anchor-release-check polkit/app.anchor.release.policy polkit/anchor-uninstall install.sh; do
   [ -f "$f" ] || { echo "Missing $f" >&2; exit 1; }
 done
 
-# ---- .deb: the same files install.sh puts in place, in the system's standard folders ----
 DEB="$STAGE/deb"
 install -d "$DEB/DEBIAN" "$DEB/usr/lib/anchor/icons" "$DEB/usr/bin" "$DEB/usr/share/applications" \
   "$DEB/usr/share/icons/hicolor/scalable/apps" "$DEB/usr/share/polkit-1/actions" "$DEB/usr/libexec" \
@@ -32,23 +25,23 @@ install -d "$DEB/DEBIAN" "$DEB/usr/lib/anchor/icons" "$DEB/usr/bin" "$DEB/usr/sh
 install -m 644 "${APP_FILES[@]}" "$DEB/usr/lib/anchor/"
 install -m 644 desktop/icons/*.svg "$DEB/usr/lib/anchor/icons/"
 install -m 644 desktop/icons/app.anchor.Desktop.svg "$DEB/usr/share/icons/hicolor/scalable/apps/"
-# What App Center, GNOME Software and Discover show (name, developer, description, icon, links)
+
 install -D -m 644 packaging/app.anchor.Desktop.metainfo.xml "$DEB/usr/share/metainfo/app.anchor.Desktop.metainfo.xml"
-for size in 48 64 128 256 512; do  # store apps prefer PNG icons
+for size in 48 64 128 256 512; do
   install -D -m 644 "packaging/icons/$size.png" "$DEB/usr/share/icons/hicolor/${size}x${size}/apps/app.anchor.Desktop.png"
 done
 install -m 644 polkit/app.anchor.release.policy "$DEB/usr/share/polkit-1/actions/"
 install -m 755 polkit/anchor-release-check "$DEB/usr/libexec/"
-# "Uninstall Anchor from this computer…" runs this through pkexec: it removes the package itself.
+
 printf '%s\n' '#!/bin/sh' \
   '# Removes the Anchor package. Run by Anchor'"'"'s "Uninstall Anchor from this computer…" through pkexec.' \
   'exec dpkg --remove anchor' > "$DEB/usr/libexec/anchor-uninstall"
 chmod 755 "$DEB/usr/libexec/anchor-uninstall"
-# Menu → Check for updates… → Update runs this through pkexec: it installs the downloaded .deb.
+
 install -m 755 packaging/anchor-update "$DEB/usr/libexec/anchor-update"
 
 cat > "$DEB/usr/bin/anchor" <<'EOF'
-#!/bin/sh
+
 exec python3 /usr/lib/anchor/anchor.py "$@"
 EOF
 chmod 755 "$DEB/usr/bin/anchor"
@@ -96,7 +89,6 @@ EOF
 
 dpkg-deb --build --root-owner-group "$DEB" "$DIST/anchor-linux.deb" >/dev/null
 
-# ---- .tar.gz: the app plus install.sh, for any Linux ----
 TAR="$STAGE/anchor-linux"
 mkdir -p "$TAR/desktop/icons" "$TAR/polkit"
 cp "${APP_FILES[@]}" "$TAR/desktop/"

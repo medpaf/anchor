@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds tests/fixtures/dummy.apk, an empty app the device tests install and expect Anchor to block.
+
 set -euo pipefail
 cd "$(dirname "$0")"
 SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/Android/Sdk}}"

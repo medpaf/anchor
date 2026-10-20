@@ -6,11 +6,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 
-/**
- * Notices new installs the moment they happen while Anchor's process is running, so a
- * never-allowed app is hidden before it can be opened. (When the process isn't running, the
- * once-a-minute check in {@link InstallBlocks} catches it.)
- */
 public class AnchorApp extends Application {
     @Override
     public void onCreate() {

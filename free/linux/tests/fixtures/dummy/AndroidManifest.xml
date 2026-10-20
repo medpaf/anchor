@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- A do-nothing app the device tests install to check that Anchor blocks new installs. -->
+
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="app.anchor.testdummy">
-    <!-- Runtime permissions, so the tests can check Anchor removes and restores them. -->
+
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <application android:label="Anchor test app" android:hasCode="false" />

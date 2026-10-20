@@ -1,10 +1,3 @@
-"""A fake adb + phone, so the desktop app can be tested without a device.
-
-FakePhone mimics the companion app's command provider (android/.../CommandProvider.java):
-same commands, same JSON replies, same error codes. FakeAdb answers the exact adb command lines
-that adbclient sends, so the tests go through the real parsing code.
-"""
-
 import base64
 import hashlib
 import io
@@ -19,9 +12,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "desktop"))
 
-import adbclient as ac  # noqa: E402
+import adbclient as ac
 
-# Smallest valid PNG (1x1 transparent pixel), used as an app icon.
 PNG = base64.b64decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==")
 
@@ -33,9 +25,8 @@ DEFAULT_APPS = [
     ("com.google.android.dialer", "Phone"),
 ]
 
-
 class FakePhone:
-    PROTECTED = {"com.google.android.dialer"}  # Android refuses to suspend these
+    PROTECTED = {"com.google.android.dialer"}
     SYSTEM = {"com.google.android.youtube", "com.google.android.apps.maps", "com.google.android.dialer"}
 
     def __init__(self, apps=DEFAULT_APPS, version=ac.AGENT_VERSION, model="Google Pixel 8",
@@ -50,34 +41,33 @@ class FakePhone:
         self.selected = set()
         self.blocked = set()
         self.failed = set()
-        self.shifted = False  # manual shift
-        self.until = 0  # timed shift end (ms)
+        self.shifted = False
+        self.until = 0
         self.schedules = []
-        self.active_windows = {}  # tests set {schedule id: window end ms} to simulate "on right now"
-        self.paused = {}  # schedule id -> paused until (ms)
+        self.active_windows = {}
+        self.paused = {}
         self.background_allowed = False
-        self.install_blocks = []  # [{pkg, name}]
+        self.install_blocks = []
         self.install_blocks_set = False
-        self.kept = set()  # on the list but already installed when added
-        self.placeholders = set()  # never-allowed packages held by Anchor's placeholder app
-        self.placeholder_installs = []  # what the computer pushed, for tests to inspect
-        self.refuse_placeholders = False  # simulate a phone that won't take USB installs
-        self.granted = {}  # pkg -> runtime permissions the user granted
+        self.kept = set()
+        self.placeholders = set()
+        self.placeholder_installs = []
+        self.refuse_placeholders = False
+        self.granted = {}
         self.uses = {"com.instagram.android": ["android.permission.CAMERA", "android.permission.RECORD_AUDIO",
-                                               "android.permission.POST_NOTIFICATIONS"]}  # pkg -> permissions it asks for
-        self.revoked = {}  # pkg -> permissions Anchor took away while the app is blocked
-        self.dpm_output = None  # set to simulate a `dpm set-device-owner` failure
-        self.install_output = None  # set to simulate an `adb install` failure
-        self.accounts = []  # (name, type, owning package) signed in on the phone
-        self.edition = "free"  # which desktop app last asked (the phone app shows its name)
+                                               "android.permission.POST_NOTIFICATIONS"]}
+        self.revoked = {}
+        self.dpm_output = None
+        self.install_output = None
+        self.accounts = []
+        self.edition = "free"
         self.commands = []
 
-    # ---- helpers for tests ----
     def ready(self, token):
-        """Puts the phone in the fully set-up state, paired with `token`."""
+
         self.installed = self.owner = True
         self.token_hash = self._hash(token)
-        self.install_blocks_set = True  # an existing setup; tests of the defaults turn this off
+        self.install_blocks_set = True
         return self
 
     @staticmethod
@@ -93,7 +83,7 @@ class FakePhone:
             return "manual"
         if self.until > self.now():
             return "timer"
-        if self.until:  # a timer that ran out: its apps come back and leave the list
+        if self.until:
             self.until, self.selected = 0, set()
         return None
 
@@ -104,7 +94,7 @@ class FakePhone:
         return {i: t for i, t in self.paused.items() if t > self.now()}
 
     def scheduled_now(self):
-        """Same rule as Core.scheduledNow: apps of enabled, active, unpaused schedules."""
+
         out = {}
         for sch in self.schedules:
             end = self.active_windows.get(sch["id"])
@@ -115,7 +105,7 @@ class FakePhone:
         return out
 
     def caught(self):
-        """Same rule as InstallBlocks.caught: installed, never allowed, and not kept."""
+
         out = set()
         for app in self.install_blocks:
             if app["pkg"] in self.apps:
@@ -126,8 +116,7 @@ class FakePhone:
         return out
 
     def install(self, pkg, label):
-        """Simulates installing an app (the phone then notices and re-applies). Returns False when
-        Android refuses because Anchor's placeholder holds the name."""
+
         if pkg in self.placeholders:
             return False
         self.apps[pkg] = label
@@ -139,7 +128,7 @@ class FakePhone:
                       if a["pkg"] not in self.apps and a["pkg"] not in self.placeholders)
 
     def sync_placeholders(self):
-        """Like InstallBlocks.syncPlaceholders: released apps lose their placeholder."""
+
         listed = {a["pkg"] for a in self.install_blocks}
         self.placeholders &= listed
 
@@ -148,7 +137,7 @@ class FakePhone:
         want &= set(self.apps)
         self.failed = want & self.PROTECTED
         self.blocked = want - self.failed
-        # Same rule as Permissions.sync: blocked apps lose their permissions, released ones get them back.
+
         for pkg in self.blocked:
             if self.granted.get(pkg):
                 self.revoked.setdefault(pkg, set()).update(self.granted.pop(pkg))
@@ -172,7 +161,6 @@ class FakePhone:
             "selected": sorted(self.selected), "blocked": sorted(self.blocked), "failed": sorted(self.failed),
         }
 
-    # ---- the provider ----
     def call(self, method, payload):
         self.commands.append(method)
         token = payload.get("token", "")
@@ -305,7 +293,7 @@ class FakePhone:
 
     @staticmethod
     def _check_schedules(schedules):
-        """Same rules as Core.parseSchedules on the phone."""
+
         if not isinstance(schedules, list):
             return "schedules must be a list"
         for sch in schedules:
@@ -329,9 +317,7 @@ class FakePhone:
                 z.writestr(f"icons/{p}.png", PNG)
         return buf.getvalue()
 
-
 class FakeAdb(ac.Adb):
-    """Stands in for the adb binary. `devices` is the list `adb devices -l` reports."""
 
     def __init__(self, phone=None, devices=None):
         super().__init__("/fake/adb")
@@ -407,9 +393,8 @@ class FakeAdb(ac.Adb):
             return "Result: Bundle[{json=%s}]\n" % json.dumps(ph.call(m.group(1), payload), separators=(",", ":"))
         raise AssertionError(f"unexpected shell command: {cmd}")
 
-
 def dumpsys_account(accounts):
-    """`adb shell dumpsys account` output in the format Android 14-16 prints."""
+
     lines = ["User UserInfo{0:Owner:4c13}:", f"  Accounts: {len(accounts)}"]
     lines += [f"    Account {{name={n}, type={t}}}" for n, t, _ in accounts]
     lines += ["  ", "  AccountId, Action_Type, timestamp, UID, TableName, Key", "  Accounts History",
@@ -422,9 +407,8 @@ def dumpsys_account(accounts):
               f"uid 10050, lastUpdateTime -1" for t, p in owners.items()]
     return "\n".join(lines) + "\n"
 
-
 def placeholder_package(apk_path):
-    """Reads the package name out of a placeholder APK built by desktop/placeholder.py."""
+
     import placeholder
     with zipfile.ZipFile(apk_path) as z:
         axml = z.read("AndroidManifest.xml")

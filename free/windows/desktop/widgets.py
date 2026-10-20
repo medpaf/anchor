@@ -1,5 +1,3 @@
-"""Anchor's building blocks in Qt: icons, spinner, switch, toasts, dialogs, cards and rows."""
-
 import hashlib
 from pathlib import Path
 
@@ -16,7 +14,6 @@ import theme
 HERE = Path(__file__).resolve().parent
 ICONS = HERE / "icons"
 
-# Material Design icon paths (Apache 2.0), drawn in any colour.
 PATHS = {
     "search": "M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 "
               "4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 "
@@ -32,7 +29,7 @@ PATHS = {
     "alarm": "M22 5.72l-4.6-3.86-1.29 1.53 4.6 3.86L22 5.72zM7.88 3.39L6.6 1.86 2 5.71l1.29 1.53 "
              "4.59-3.85zM12.5 8H11v6l4.75 2.85.75-1.23-4-2.37V8zM12 4c-4.97 0-9 4.03-9 9s4.02 9 9 9c4.97 "
              "0 9-4.03 9-9s-4.03-9-9-9zm0 16c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z",
-    # Never allow: copied from the phone app (android/res/drawable/ic_block.xml), so both look the same.
+
     "block": "M12,2C6.48,2 2,6.48 2,12s4.48,10 10,10 10,-4.48 10,-10S17.52,2 12,2zM4,12c0,-4.42 3.58,-8 8,-8 1"
              ".85,0 3.55,0.63 4.9,1.69L5.69,16.9C4.63,15.55 4,13.85 4,12zM12,20c-1.85,0 -3.55,-0.63 -4.9,-1.69L18.31,7.1C19.37,8.45 20,10.15 20,12c0,4.42 -3.58,8 -8,8z",
     "grid": "M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm"
@@ -64,7 +61,6 @@ PATHS = {
 
 _cache = {}
 
-
 def svg_pixmap(svg_bytes, size, dpr=2.0):
     key = (svg_bytes, size, dpr)
     if key not in _cache:
@@ -80,32 +76,27 @@ def svg_pixmap(svg_bytes, size, dpr=2.0):
         _cache[key] = pm
     return _cache[key]
 
-
 def svg_fill(color):
-    """An SVG fill for "#RRGGBB" or CSS "rgba(r, g, b, a)": Qt's SVG renderer doesn't read rgba()."""
+
     if color.startswith("rgba("):
         r, g, b, a = (x.strip() for x in color[5:-1].split(","))
         return f'fill="#{int(r):02X}{int(g):02X}{int(b):02X}" fill-opacity="{float(a)}"'
     return f'fill="{color}"'
 
-
 def symbol(name, color=theme.TEXT, size=20):
-    """One of PATHS as a pixmap in `color`."""
+
     svg = (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">'
            f'<path {svg_fill(color)} d="{PATHS[name]}"/></svg>').encode()
     return svg_pixmap(svg, size)
-
 
 def symbol_icon(name, color=theme.TEXT, size=20):
     icon = QIcon(symbol(name, color, size))
     icon.addPixmap(symbol(name, "rgba(238, 234, 247, 0.3)", size), QIcon.Disabled)
     return icon
 
-
 def picture(filename, size):
-    """One of the SVGs in icons/ (the orbs, the app icon) as a pixmap."""
-    return svg_pixmap((ICONS / filename).read_bytes(), size)
 
+    return svg_pixmap((ICONS / filename).read_bytes(), size)
 
 def rounded(pixmap, size, radius):
     dpr = 2.0
@@ -121,9 +112,8 @@ def rounded(pixmap, size, radius):
     out.setDevicePixelRatio(dpr)
     return out
 
-
 def app_pixmap(png, label, size=40):
-    """The app's own icon when the phone sent one, else a round avatar with its initial."""
+
     if png:
         pm = QPixmap()
         if pm.loadFromData(png):
@@ -150,14 +140,12 @@ def app_pixmap(png, label, size=40):
     out.setDevicePixelRatio(dpr)
     return out
 
-
 def set_kind(button, kind):
-    """Switches a button's look (the `kind` style property) and repaints it."""
+
     if button.property("kind") != kind:
         button.setProperty("kind", kind)
         button.style().unpolish(button)
         button.style().polish(button)
-
 
 def set_flag(widget, name, value):
     if widget.property(name) != value:
@@ -165,14 +153,12 @@ def set_flag(widget, name, value):
         widget.style().unpolish(widget)
         widget.style().polish(widget)
 
-
 def shadow(widget, blur=36, alpha=110, dy=8):
     effect = QGraphicsDropShadowEffect(widget)
     effect.setBlurRadius(blur)
     effect.setOffset(0, dy)
     effect.setColor(QColor(0, 0, 0, alpha))
     widget.setGraphicsEffect(effect)
-
 
 def button(text, kind, tooltip=None, on_click=None):
     b = QPushButton(text)
@@ -183,7 +169,6 @@ def button(text, kind, tooltip=None, on_click=None):
     if on_click:
         b.clicked.connect(lambda *_: on_click())
     return b
-
 
 def icon_button(name, tooltip, on_click=None, color=theme.TEXT, size=20, kind="icon"):
     b = QPushButton()
@@ -196,7 +181,6 @@ def icon_button(name, tooltip, on_click=None, color=theme.TEXT, size=20, kind="i
     if on_click:
         b.clicked.connect(lambda *_: on_click())
     return b
-
 
 def label(text="", name=None, wrap=False, align=None, rich=False, selectable=False):
     lbl = QLabel(text)
@@ -212,16 +196,13 @@ def label(text="", name=None, wrap=False, align=None, rich=False, selectable=Fal
         lbl.setTextInteractionFlags(Qt.TextSelectableByMouse)
     return lbl
 
-
 def image(pixmap):
     lbl = QLabel()
     lbl.setPixmap(pixmap)
     lbl.setAttribute(Qt.WA_TransparentForMouseEvents)
     return lbl
 
-
 class ElidedLabel(QLabel):
-    """A one-line label that ends in … when it doesn't fit (QLabel itself never elides)."""
 
     def __init__(self, text="", name=None):
         super().__init__(text)
@@ -238,9 +219,7 @@ class ElidedLabel(QLabel):
         p.drawText(rect, Qt.AlignLeft | Qt.AlignVCenter,
                    self.fontMetrics().elidedText(self.text(), Qt.ElideRight, rect.width()))
 
-
 class Spinner(QWidget):
-    """A violet arc that turns while something is happening."""
 
     def __init__(self, size=24, parent=None):
         super().__init__(parent)
@@ -271,9 +250,7 @@ class Spinner(QWidget):
         p.setPen(pen)
         p.drawArc(rect, -self.angle * 16, 100 * 16)
 
-
 class Switch(QAbstractButton):
-    """An on/off switch like libadwaita's: violet when on, the knob slides."""
 
     def __init__(self, checked=False, parent=None):
         super().__init__(parent)
@@ -297,7 +274,7 @@ class Switch(QAbstractButton):
         self.anim.start()
 
     def set_quietly(self, on):
-        """Sets the state without telling anyone (no toggled signal)."""
+
         self.blockSignals(True)
         self.setChecked(on)
         self.blockSignals(False)
@@ -328,9 +305,7 @@ class Switch(QAbstractButton):
     def sizeHint(self):
         return QSize(46, 26)
 
-
 class Toasts(QWidget):
-    """Short messages in a pill at the bottom of the window, one at a time."""
 
     def __init__(self, parent):
         super().__init__(parent)
@@ -338,7 +313,7 @@ class Toasts(QWidget):
         self.pill = QLabel(self)
         self.pill.setObjectName("toast")
         self.pill.setWordWrap(True)
-        self.pill.setAlignment(Qt.AlignCenter)  # no shadow: it would sit inside the fade effect
+        self.pill.setAlignment(Qt.AlignCenter)
         self.opacity = QGraphicsOpacityEffect(self)
         self.setGraphicsEffect(self.opacity)
         self.fade = QPropertyAnimation(self.opacity, b"opacity", self, duration=180)
@@ -379,12 +354,7 @@ class Toasts(QWidget):
         self.setGeometry(0, parent.height() - h - 8, parent.width(), h)
         self.pill.move((parent.width() - width) // 2, 10)
 
-
-# ---- Dialogs ------------------------------------------------------------------------------------
-
 class Overlay(QWidget):
-    """A dimmed layer over the window holding a centred panel: Anchor's dialogs live inside the
-    window, like libadwaita's, so they look the same on every system."""
 
     closed = Signal()
 
@@ -416,8 +386,7 @@ class Overlay(QWidget):
         if self.max_height:
             h = min(limit, self.max_height)
         else:
-            # Wrapped text is taller at a narrow width: ask the layout for its height at this width
-            # (sizeHint() measures it unwrapped, which cut off the end of long messages).
+
             lay = self.panel.layout()
             h = lay.totalHeightForWidth(width) if lay and lay.hasHeightForWidth() else self.panel.sizeHint().height()
             h = min(h, limit)
@@ -450,11 +419,7 @@ class Overlay(QWidget):
             self.closed.emit()
             self.deleteLater()
 
-
 class AlertDialog(Overlay):
-    """Heading, body, an optional extra widget and a row of buttons. Like Adw.AlertDialog:
-    add_response(id, label), set_response_appearance(id, "suggested"|"destructive"), and the
-    `response` signal with the id of the button pressed."""
 
     response = Signal(str)
 
@@ -480,7 +445,6 @@ class AlertDialog(Overlay):
         self.default_response = None
         self.close_response = None
 
-    # libadwaita-style API, so the window code reads the same on both apps.
     def get_heading(self):
         return self.heading.text()
 
@@ -519,11 +483,11 @@ class AlertDialog(Overlay):
         self.close_overlay()
         self.response.emit(rid)
 
-    def connect(self, signal, handler):  # noqa: A003 - mirrors GObject's d.connect("response", ...)
+    def connect(self, signal, handler):
         assert signal == "response"
         self.response.connect(lambda rid: handler(self, rid))
 
-    def emit(self, signal, rid):  # noqa: A003 - lets tests press a button like with GTK
+    def emit(self, signal, rid):
         assert signal == "response"
         self.emit_response(rid)
 
@@ -536,9 +500,7 @@ class AlertDialog(Overlay):
         else:
             super().keyPressEvent(ev)
 
-
 class PanelDialog(Overlay):
-    """A taller dialog with a title bar, a close button and scrolling content (app details, About)."""
 
     def __init__(self, window, title="", width=460, height=640):
         super().__init__(window, width, max_height=height)
@@ -566,11 +528,7 @@ class PanelDialog(Overlay):
     def get_title(self):
         return self.title.text()
 
-
-# ---- Cards, groups and rows -------------------------------------------------------------------
-
 class Row(QFrame):
-    """A list row: an optional picture, a title and subtitle, then widgets on the right."""
 
     activated = Signal()
 
@@ -622,7 +580,6 @@ class Row(QFrame):
             self.activated.emit()
         super().mouseReleaseEvent(ev)
 
-
 class SwitchRow(Row):
     def __init__(self, title, subtitle="", active=False):
         super().__init__(title, subtitle, subtitle_lines=2)
@@ -635,9 +592,7 @@ class SwitchRow(Row):
     def set_active(self, on):
         self.switch.setChecked(on)
 
-
 class Card(QFrame):
-    """A rounded card holding rows, with separators between them."""
 
     def __init__(self):
         super().__init__()
@@ -660,9 +615,7 @@ class Card(QFrame):
         if self.rows:
             self.rows[0].setStyleSheet("#row { border-top: none; }")
 
-
 class Group(QWidget):
-    """A titled card, like Adw.PreferencesGroup."""
 
     def __init__(self, title="", description=""):
         super().__init__()
@@ -688,10 +641,7 @@ class Group(QWidget):
     def remove(self, row):
         self.card.remove(row)
 
-
 class Section(QFrame):
-    """A card with a header (icon, title, hint, chevron) and rows below it. Clicking the header
-    folds the rows away; folded, the header is the whole card."""
 
     toggled = Signal(bool)
 
@@ -753,7 +703,7 @@ class Section(QFrame):
     def insert_sorted(self, row):
         keys = [r.sort_key for r in self.rows]
         i = next((n for n, k in enumerate(keys) if k > row.sort_key), len(keys))
-        self.body_lay.insertWidget(i + 1, row)  # after the "empty" label
+        self.body_lay.insertWidget(i + 1, row)
         self.rows.insert(i, row)
 
     def take(self, row):
@@ -767,15 +717,13 @@ class Section(QFrame):
         self.rows = []
 
     def refresh_empty(self, empty_text=None):
-        """Shows the placeholder when no row is visible."""
+
         if empty_text is not None:
             self.empty.setText(empty_text)
         visible = any(not r.isHidden() for r in self.rows)
         self.empty.setVisible(not visible and bool(self.empty.text()))
 
-
 class Clamp(QWidget):
-    """Centres its child and keeps it at most `width` wide (libadwaita's Adw.Clamp)."""
 
     def __init__(self, child, width=600, margins=(16, 18, 16, 32)):
         super().__init__()
@@ -787,7 +735,6 @@ class Clamp(QWidget):
         lay.addWidget(child, 100)
         lay.addStretch(1)
 
-
 def scroller(child):
     area = QScrollArea()
     area.setWidgetResizable(True)
@@ -796,9 +743,7 @@ def scroller(child):
     area.setWidget(child)
     return area
 
-
 class StatusPage(QWidget):
-    """A centred icon, title, text and optional spinner (libadwaita's Adw.StatusPage)."""
 
     def __init__(self, icon=None, title="", text="", spinner=False, picture_file=None):
         super().__init__()
@@ -833,7 +778,6 @@ class StatusPage(QWidget):
     def get_description(self):
         return self.text.text()
 
-
 def hbox(*widgets, spacing=8, align=None):
     w = QWidget()
     lay = QHBoxLayout(w)
@@ -845,4 +789,3 @@ def hbox(*widgets, spacing=8, align=None):
         else:
             lay.addWidget(x, 0, align) if align else lay.addWidget(x)
     return w
-

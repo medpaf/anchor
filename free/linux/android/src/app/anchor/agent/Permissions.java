@@ -17,14 +17,6 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
-/**
- * Takes away a blocked app's permissions (camera, microphone, location, contacts, photos,
- * notifications… every permission the user grants in a popup) and gives back exactly the ones it
- * had when it's released.
- *
- * <p>Revoked permissions are set to "denied by policy", so they can't be switched back on in
- * Settings while the app is blocked. The permissions an app had before are remembered per app.
- */
 final class Permissions {
     private static final String PREFS = "anchor_permissions";
     private static final String KEY_REVOKED_APPS = "revoked_apps";
@@ -36,10 +28,6 @@ final class Permissions {
         return c.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
     }
 
-    /**
-     * Remembers which apps are blocked, restoring any leftover ones (Core.apply revokes before hiding
-     * and restores after un-hiding, because Android ignores permission changes on hidden apps).
-     */
     static void record(Context c, Collection<String> blocked) {
         for (String pkg : revokedApps(c)) {
             if (!blocked.contains(pkg) && prefs(c).contains(pkg)) restore(c, pkg);
@@ -51,7 +39,6 @@ final class Permissions {
         return new TreeSet<>(prefs(c).getStringSet(KEY_REVOKED_APPS, Collections.<String>emptySet()));
     }
 
-    /** How many permissions each blocked app had that Anchor took away (and will give back). */
     static Map<String, Integer> counts(Context c) {
         Map<String, Integer> out = new TreeMap<>();
         for (String pkg : revokedApps(c)) {
@@ -69,7 +56,7 @@ final class Permissions {
         boolean changed = false;
         for (String perm : runtimePermissions(c, pkg)) {
             if (dpm.getPermissionGrantState(admin, pkg, perm) == DevicePolicyManager.PERMISSION_GRANT_STATE_DENIED) {
-                continue;  // already revoked by Anchor
+                continue;
             }
             if (pm.checkPermission(perm, pkg) == PackageManager.PERMISSION_GRANTED && granted.add(perm)) {
                 changed = true;
@@ -77,7 +64,7 @@ final class Permissions {
             try {
                 dpm.setPermissionGrantState(admin, pkg, perm, DevicePolicyManager.PERMISSION_GRANT_STATE_DENIED);
             } catch (RuntimeException ignored) {
-                // Some system apps have permissions Android won't let anyone change.
+
             }
         }
         if (changed) prefs(c).edit().putStringSet(pkg, granted).commit();
@@ -89,7 +76,7 @@ final class Permissions {
         Set<String> granted = prefs(c).getStringSet(pkg, Collections.<String>emptySet());
         for (String perm : runtimePermissions(c, pkg)) {
             try {
-                // Grant again what the app had, then hand control back to the user.
+
                 if (granted.contains(perm)) {
                     dpm.setPermissionGrantState(admin, pkg, perm, DevicePolicyManager.PERMISSION_GRANT_STATE_GRANTED);
                 }
@@ -100,10 +87,6 @@ final class Permissions {
         prefs(c).edit().remove(pkg).commit();
     }
 
-    /**
-     * Details about one app for the computer's details window: version, dates, and each runtime
-     * permission with its name as Android shows it, whether it's granted, and whether it's locked.
-     */
     static org.json.JSONObject info(Context c, String pkg) throws org.json.JSONException {
         PackageManager pm = c.getPackageManager();
         PackageInfo p;
@@ -132,7 +115,7 @@ final class Permissions {
                     .put("had", prefs(c).getStringSet(pkg, Collections.<String>emptySet()).contains(perm)));
         }
         org.json.JSONObject out = new org.json.JSONObject();
-        if (Usage.allowed(c)) {  // screen time: today, and the last 7 days (today included)
+        if (Usage.allowed(c)) {
             long now = System.currentTimeMillis();
             out.put("usage_today", Usage.foreground(c, pkg, Usage.midnight(0), now));
             out.put("usage_week", Usage.foreground(c, pkg, Usage.midnight(6), now));
@@ -150,10 +133,6 @@ final class Permissions {
                 .put("permissions", perms);
     }
 
-    /**
-     * Grants or removes one permission, then hands control back to the user (so it can still be
-     * changed in the phone's Settings). Not while the app is blocked: its permissions are held back.
-     */
     static void set(Context c, String pkg, String perm, boolean grant) {
         if (!runtimePermissions(c, pkg).contains(perm)) {
             throw new IllegalArgumentException(pkg + " doesn't use " + perm);
@@ -170,7 +149,6 @@ final class Permissions {
         if (!ok) throw new IllegalArgumentException("Android didn't allow changing this permission");
     }
 
-    /** The app's "dangerous" permissions: the ones a user grants in a popup. */
     static List<String> runtimePermissions(Context c, String pkg) {
         List<String> out = new ArrayList<>();
         PackageManager pm = c.getPackageManager();
@@ -186,7 +164,7 @@ final class Permissions {
                 PermissionInfo pi = pm.getPermissionInfo(perm, 0);
                 if (pi.getProtection() == PermissionInfo.PROTECTION_DANGEROUS) out.add(perm);
             } catch (PackageManager.NameNotFoundException ignored) {
-                // Permission defined by an app that isn't installed.
+
             }
         }
         return out;

@@ -1,15 +1,3 @@
-"""Builds "placeholder" APKs: tiny empty apps that take a never-allowed app's package name.
-
-With a placeholder installed under, say, com.reddit.frontpage, Android refuses to install the real
-Reddit (an app with that name already exists, signed with a different key), so the Play Store can't
-install it. The phone keeps placeholders hidden and removes them when the app is released.
-
-An APK here is just the compiled manifest (placeholder-manifest.bin, made from
-android/placeholder/AndroidManifest.xml by android/build.sh) with the package name swapped in, plus a
-v1 (JAR) signature made with Python's cryptography library. No Android SDK or openssl is needed,
-so it works the same on Windows and Linux.
-"""
-
 import base64
 import hashlib
 import io
@@ -36,12 +24,8 @@ RES_STRING_POOL_TYPE = 0x0001
 UTF8_FLAG = 1 << 8
 SORTED_FLAG = 1 << 0
 
-
 class PlaceholderError(Exception):
     pass
-
-
-# ---- Binary XML (AXML) string pool -------------------------------------------------------
 
 def _read_len8(data, pos):
     n = data[pos]
@@ -49,17 +33,14 @@ def _read_len8(data, pos):
         return ((n & 0x7F) << 8) | data[pos + 1], pos + 2
     return n, pos + 1
 
-
 def _read_len16(data, pos):
     n = struct.unpack_from("<H", data, pos)[0]
     if n & 0x8000:
         return ((n & 0x7FFF) << 16) | struct.unpack_from("<H", data, pos + 2)[0], pos + 4
     return n, pos + 2
 
-
 def _enc_len8(n):
     return bytes([n]) if n < 0x80 else bytes([0x80 | (n >> 8), n & 0xFF])
-
 
 def _parse_pool(chunk):
     _type, header_size, _size, count, styles, flags, strings_start, _styles_start = struct.unpack_from(
@@ -79,9 +60,8 @@ def _parse_pool(chunk):
             out.append(chunk[pos:pos + 2 * nchars].decode("utf-16-le"))
     return out, flags, header_size
 
-
 def _build_pool(strings, flags):
-    flags &= ~SORTED_FLAG  # we change a string, so don't promise any order
+    flags &= ~SORTED_FLAG
     data, offsets = bytearray(), []
     for s in strings:
         offsets.append(len(data))
@@ -102,9 +82,8 @@ def _build_pool(strings, flags):
                          strings_start, 0)
     return header + struct.pack(f"<{len(strings)}I", *offsets) + bytes(data)
 
-
 def manifest_for(package):
-    """The compiled template manifest with its package name replaced."""
+
     axml = TEMPLATE.read_bytes()
     xml_type, xml_header, _xml_size = struct.unpack_from("<HHI", axml, 0)
     if xml_type != 0x0003:
@@ -120,15 +99,11 @@ def manifest_for(package):
     body = new_pool + rest
     return struct.pack("<HHI", 0x0003, xml_header, xml_header + len(body)) + axml[8:xml_header] + body
 
-
-# ---- Signing (v1 / JAR signature) ----------------------------------------------------------
-
 def key_dir():
     return plat.data_dir() / "placeholder-key"
 
-
 def ensure_key():
-    """A self-signed key, made once. Every placeholder is signed with it."""
+
     d = key_dir()
     key_path, cert_path = d / "key.pem", d / "cert.pem"
     if not (key_path.exists() and cert_path.exists()):
@@ -146,9 +121,8 @@ def ensure_key():
         cert_path.write_bytes(cert.public_bytes(serialization.Encoding.PEM))
     return key_path, cert_path
 
-
 def _sign(data):
-    """A detached PKCS#7 signature of `data` in DER, as `openssl cms -sign -binary -noattr` makes."""
+
     key_path, cert_path = ensure_key()
     key = serialization.load_pem_private_key(key_path.read_bytes(), password=None)
     cert = x509.load_pem_x509_certificate(cert_path.read_bytes())
@@ -156,13 +130,11 @@ def _sign(data):
     return (pkcs7.PKCS7SignatureBuilder().set_data(data).add_signer(cert, key, hashes.SHA256())
             .sign(serialization.Encoding.DER, options))
 
-
 def _b64sha256(data):
     return base64.b64encode(hashlib.sha256(data).digest()).decode()
 
-
 def build_apk(package):
-    """Returns the bytes of a signed placeholder APK for `package`."""
+
     manifest_xml = manifest_for(package)
     entry = f"Name: AndroidManifest.xml\r\nSHA-256-Digest: {_b64sha256(manifest_xml)}\r\n\r\n".encode()
     mf = b"Manifest-Version: 1.0\r\nCreated-By: Anchor\r\n\r\n" + entry
@@ -177,9 +149,8 @@ def build_apk(package):
         z.writestr("META-INF/ANCHOR.RSA", signature)
     return buf.getvalue()
 
-
 def write_apk(package, directory=None):
-    """Builds a placeholder APK into a temporary file and returns its path."""
+
     fd, path = tempfile.mkstemp(prefix="anchor-placeholder-", suffix=".apk", dir=directory)
     with os.fdopen(fd, "wb") as f:
         f.write(build_apk(package))

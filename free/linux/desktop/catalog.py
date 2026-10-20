@@ -1,10 +1,6 @@
-"""Well-known apps for the 'Never allow' list."""
-
 import re
 from urllib.parse import parse_qs, urlparse
 
-# On the 'Never allow' list by default. Messaging apps (Messenger, WhatsApp, Signal…) are left out on
-# purpose: Messenger is a separate app from Facebook (com.facebook.orca), so it stays allowed.
 SOCIAL = [
     ("com.zhiliaoapp.musically", "TikTok"),
     ("com.ss.android.ugc.trill", "TikTok (Asia)"),
@@ -22,7 +18,6 @@ SOCIAL = [
     ("com.bereal.ft", "BeReal"),
 ]
 
-# Offered in the "Add" dialog, not blocked by default.
 SUGGESTIONS = [
     ("xyz.blueskyweb.app", "Bluesky"),
     ("com.linkedin.android", "LinkedIn"),
@@ -39,10 +34,8 @@ KNOWN = dict(SOCIAL + SUGGESTIONS)
 
 _PACKAGE = re.compile(r"[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+")
 
-
 def parse_app(text):
-    """A package name from what the user typed: a package name or a Play Store link.
-    Raises ValueError when it's neither."""
+
     text = text.strip()
     if "://" in text or text.startswith("play.google.com"):
         url = urlparse(text if "://" in text else "https://" + text)
@@ -54,7 +47,6 @@ def parse_app(text):
     if not _PACKAGE.fullmatch(text):
         raise ValueError("Paste a Play Store link, or a package name like com.instagram.android.")
     return text
-
 
 def name_for(pkg, installed_labels=None):
     if pkg in KNOWN:

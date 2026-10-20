@@ -1,15 +1,11 @@
-"""Unit tests for desktop/timetext.py."""
-
 import unittest
 from datetime import datetime
 
-from fakes import ROOT  # noqa: F401  (puts desktop/ on sys.path)
+from fakes import ROOT
 from timetext import clock, countdown, days_text, hours_text, minutes_until, screen_time
-
 
 def ts(text):
     return datetime.fromisoformat(text).timestamp()
-
 
 class DaysTextTest(unittest.TestCase):
     def test_names_common_sets(self):
@@ -18,12 +14,10 @@ class DaysTextTest(unittest.TestCase):
         self.assertEqual(days_text([7, 6]), "Weekends")
         self.assertEqual(days_text([1, 3, 5]), "Mon, Wed, Fri")
 
-
 class HoursTextTest(unittest.TestCase):
     def test_window_and_all_day(self):
         self.assertEqual(hours_text("22:30", "07:00"), "22:30–07:00")
         self.assertEqual(hours_text("00:00", "00:00"), "all day")
-
 
 class ClockTest(unittest.TestCase):
     def test_today_shows_time_only(self):
@@ -34,7 +28,6 @@ class ClockTest(unittest.TestCase):
         now = ts("2026-10-19T23:00")
         self.assertEqual(clock(ts("2026-10-20T07:00") * 1000, now), "Tue 07:00")
 
-
 class CountdownTest(unittest.TestCase):
     def test_minutes_and_hours(self):
         now = ts("2026-10-19T12:00")
@@ -43,7 +36,6 @@ class CountdownTest(unittest.TestCase):
         self.assertEqual(countdown(ts("2026-10-19T14:00") * 1000, now), "in 2 hours")
         self.assertEqual(countdown(ts("2026-10-19T13:20") * 1000, now), "in 1 h 20 min")
         self.assertEqual(countdown(ts("2026-10-19T11:00") * 1000, now), "in 0 minutes")
-
 
 class MinutesUntilTest(unittest.TestCase):
     def test_later_today(self):
@@ -55,7 +47,6 @@ class MinutesUntilTest(unittest.TestCase):
     def test_same_minute_means_tomorrow(self):
         self.assertEqual(minutes_until(16, 30, ts("2026-10-19T16:30:20")), 24 * 60)
 
-
 class ScreenTimeTest(unittest.TestCase):
     def test_words(self):
         self.assertEqual(screen_time(0), "Not used")
@@ -64,7 +55,6 @@ class ScreenTimeTest(unittest.TestCase):
         self.assertEqual(screen_time(45 * 60_000), "45 min")
         self.assertEqual(screen_time(60 * 60_000), "1 h")
         self.assertEqual(screen_time(65 * 60_000 + 59_000), "1 h 5 min")
-
 
 if __name__ == "__main__":
     unittest.main()

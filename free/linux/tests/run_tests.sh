@@ -1,18 +1,11 @@
 #!/usr/bin/env bash
-# Runs Anchor's tests.
-#
-#   tests/run_tests.sh            unit + GUI tests (no phone needed, ~5 s)
-#   tests/run_tests.sh --device   also boots a freshly wiped emulator and runs the device tests (~3 min)
-#
-# The device tests use an emulator called "anchor_test" (Android 14, no Google apps). Pick another
-# with ANCHOR_TEST_AVD=name, or point them at a running device with ANCHOR_TEST_SERIAL=serial.
+
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/Android/Sdk}}"
 ADB="$(command -v adb || echo "$SDK/platform-tools/adb")"
 
-# Schedule math on the phone side (plain Java, runs on the JDK without Android).
 run_java_tests() {
   if command -v javac >/dev/null; then
     local out; out=$(mktemp -d)

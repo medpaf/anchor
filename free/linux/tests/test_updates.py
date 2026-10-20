@@ -1,5 +1,3 @@
-"""desktop/updates.py: comparing this build with GitHub's newest. No real network: urlopen is replaced."""
-
 import io
 import json
 import os
@@ -8,9 +6,8 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-import fakes  # noqa: F401 - puts desktop/ on the path
+import fakes
 import updates
-
 
 class UpdatesTest(unittest.TestCase):
     def setUp(self):
@@ -40,7 +37,7 @@ class UpdatesTest(unittest.TestCase):
     def test_a_copy_not_built_by_github_cant_tell(self):
         with mock.patch.object(updates.urllib.request, "urlopen") as urlopen:
             self.assertEqual(updates.check("linux"), updates.UNKNOWN)
-        urlopen.assert_not_called()  # nothing to compare, so it doesn't even go online
+        urlopen.assert_not_called()
 
     def test_asks_for_the_right_release_and_sends_nothing_else(self):
         self.built_from("abc123")
@@ -70,12 +67,12 @@ class UpdatesTest(unittest.TestCase):
         self.assertEqual(path.read_bytes(), body)
         self.assertEqual(urlopen.call_args[0][0].full_url,
                          "https://github.com/medpaf/anchor/releases/download/linux/anchor-linux.deb")
-        if os.name != "nt":  # Windows has no Unix permissions (it reports 0o777); its temp folder is per-user
+        if os.name != "nt":
             self.assertEqual(path.parent.stat().st_mode & 0o777, 0o700, "a private folder")
 
     def test_download_refuses_something_that_isnt_a_package(self):
         with mock.patch.object(updates.urllib.request, "urlopen", return_value=io.BytesIO(b"<html>Not Found</html>")):
-            with mock.patch("tempfile.mkdtemp", return_value=self.tmp.name):  # inside the test's own folder
+            with mock.patch("tempfile.mkdtemp", return_value=self.tmp.name):
                 with self.assertRaises(OSError):
                     updates.download("linux", "anchor-linux.deb")
 
@@ -88,7 +85,6 @@ class UpdatesTest(unittest.TestCase):
     def test_download_pages(self):
         self.assertEqual(updates.download_page("linux"), "https://github.com/medpaf/anchor/releases/tag/linux")
         self.assertEqual(updates.download_page("windows"), "https://github.com/medpaf/anchor/releases/tag/windows")
-
 
 if __name__ == "__main__":
     unittest.main()

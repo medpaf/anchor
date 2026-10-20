@@ -1,14 +1,3 @@
-"""End-to-end tests on a real Android system (emulator by default).
-
-These make the companion app the device owner, so they only run when asked to:
-
-    ANCHOR_TEST_SERIAL=emulator-5554 python3 -m unittest tests.test_device -v
-
-Use a freshly wiped emulator (tests/run_tests.sh --device does that for you). Running on a real
-phone also needs ANCHOR_TEST_ALLOW_REAL_PHONE=1, and the phone must have no accounts. The tests
-remove Anchor again at the end. Set ANCHOR_TEST_FAST=1 to skip the reboot test.
-"""
-
 import os
 import tempfile
 import time
@@ -21,14 +10,12 @@ from fakes import ROOT, ac
 SERIAL = os.environ.get("ANCHOR_TEST_SERIAL")
 APK = ROOT / "desktop" / "anchor-agent.apk"
 DEFAULT_TARGETS = ["com.android.camera2", "com.android.gallery3d", "com.android.deskclock", "com.android.contacts"]
-PROTECTED = "com.android.dialer"  # the default phone app can't be suspended
+PROTECTED = "com.android.dialer"
 LAUNCHER_QUERY = ("cmd package query-activities --brief "
                   "-a android.intent.action.MAIN -c android.intent.category.LAUNCHER")
 
-
 @unittest.skipUnless(SERIAL, "set ANCHOR_TEST_SERIAL to run device tests")
 class DeviceTest(unittest.TestCase):
-    """Tests run in name order and build on each other, like a real user's journey."""
 
     @classmethod
     def setUpClass(cls):
@@ -65,7 +52,6 @@ class DeviceTest(unittest.TestCase):
             cls.env.stop()
             cls.tmp.cleanup()
 
-    # ---- helpers ----
     @classmethod
     def sh(cls, cmd, timeout=60):
         return cls.agent.shell(cmd, timeout=timeout).strip()
@@ -75,8 +61,7 @@ class DeviceTest(unittest.TestCase):
         return f"package:{pkg}" in cls.sh(f"pm list packages -u {pkg}")
 
     def state(self, pkg):
-        # The package's own per-user line ("User 0: ... installed=true hidden=..."). Real phones also
-        # print lines like "Preferred Activities User 0:", so match the exact shape.
+
         line = next((l for l in self.sh(f"dumpsys package {pkg}").splitlines()
                      if l.strip().startswith("User 0:") and "installed=" in l), "")
         return {k: f"{k}=true" in line for k in ("installed", "hidden", "suspended")}
@@ -103,7 +88,6 @@ class DeviceTest(unittest.TestCase):
             time.sleep(2)
         self.fail("device didn't finish booting")
 
-    # ---- the journey ----
     def test_01_install(self):
         self.agent.install(APK)
         st = self.agent.status(self.token)
@@ -247,9 +231,8 @@ class DeviceTest(unittest.TestCase):
             self.assertIn(p, launcher)
         self.assertNotIn(ac.AGENT_PKG, self.sh(f"dumpsys jobscheduler {ac.AGENT_PKG} | grep -m1 JOB") or "")
 
-    # ---- timers and schedules (these wait for real time to pass, about 4 minutes) ----
     def phone_clock(self):
-        """(ISO weekday, minutes after midnight, seconds) on the phone's own clock."""
+
         dow, hhmm, sec = self.sh("date +%u_%H:%M_%S").split("_")
         h, m = hhmm.split(":")
         return int(dow), int(h) * 60 + int(m), int(sec)
@@ -269,8 +252,7 @@ class DeviceTest(unittest.TestCase):
         return all(not self.state(p)["hidden"] and not self.state(p)["suspended"] for p in self.targets)
 
     def clock_locked(self):
-        # Android 14+ keeps device-owner restrictions in its policy engine; `dumpsys user` lists the
-        # effective ones on every version.
+
         return "no_config_date_time" in self.sh("dumpsys user")
 
     def schedule_at(self, start_min, end_min, dow, packages):
@@ -296,7 +278,7 @@ class DeviceTest(unittest.TestCase):
 
     def test_17c_app_schedule_starts_and_ends_by_itself(self):
         dow, now_min, sec = self.phone_clock()
-        if sec > 40 or now_min >= 1436:  # keep the window inside today, with time to set it up
+        if sec > 40 or now_min >= 1436:
             time.sleep(62 - sec)
             dow, now_min, sec = self.phone_clock()
         start = now_min + 1
@@ -323,14 +305,13 @@ class DeviceTest(unittest.TestCase):
         self.assertEqual(st["scheduled_now"], {})
         self.assertGreater(st["paused"]["t1"], st["now"])
         self.assertTrue(self.free_now())
-        # Re-applying (like the 15-minute job does) must not bring the paused schedule back.
+
         st = self.agent.select(self.token, self.targets)
         self.assertEqual(st["scheduled_now"], {})
         self.assertTrue(self.free_now())
         self.agent.set_schedules(self.token, [])
         self.assertFalse(self.clock_locked(), "the clock unlocks once no schedule is on")
 
-    # ---- Never allow (installs a tiny test app) ----
     DUMMY = "app.anchor.testdummy"
 
     def dummy_blocked(self):
@@ -406,7 +387,7 @@ class DeviceTest(unittest.TestCase):
     PERMS = ("android.permission.CAMERA", "android.permission.ACCESS_COARSE_LOCATION")
 
     def permission(self, perm):
-        """(granted, policy_fixed) for the test app, from Android's own records."""
+
         for line in self.sh(f"dumpsys package {self.DUMMY}").splitlines():
             line = line.strip()
             if line.startswith(perm + ": granted="):
@@ -421,8 +402,7 @@ class DeviceTest(unittest.TestCase):
         self.agent.shift(self.token, self.targets + [self.DUMMY])
         self.assertTrue(self.dummy_blocked())
         for perm in self.PERMS:
-            # Removed, and locked by policy: Settings shows it greyed out, so it can't be switched
-            # back on. (The adb shell could still force it, but that needs a computer.)
+
             self.assertEqual(self.permission(perm), (False, True), f"{perm} removed and locked")
         removed = self.agent.status(self.token)["permissions_removed"]
         self.assertEqual(removed[self.DUMMY], 2)
@@ -447,7 +427,7 @@ class DeviceTest(unittest.TestCase):
         self.agent.uninstall_app(self.token, self.DUMMY)
         self.wait_until(self.dummy_gone, 30, "the app to be uninstalled")
         with self.assertRaises(ac.AgentError) as cm:
-            self.agent.uninstall_app(self.token, self.targets[0])  # a system app
+            self.agent.uninstall_app(self.token, self.targets[0])
         self.assertEqual(cm.exception.code, "bad_request")
         self.assertTrue(self.installed(self.targets[0]))
         with self.assertRaises(ac.AgentError):
@@ -484,7 +464,6 @@ class DeviceTest(unittest.TestCase):
             self.assertFree(p)
         self.agent.uninstall()
         self.assertFalse(self.agent.installed())
-
 
 if __name__ == "__main__":
     unittest.main()

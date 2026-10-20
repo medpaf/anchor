@@ -1,5 +1,3 @@
-"""Unit tests for desktop/adbclient.py. No phone needed."""
-
 import base64
 import json
 import os
@@ -14,10 +12,8 @@ from fakes import FakeAdb, FakePhone, ac, dumpsys_account
 
 TOKEN = "0123456789abcdef0123456789abcdef"
 
-
 def agent_for(phone):
     return ac.Agent(FakeAdb(phone), "SERIAL1")
-
 
 class DevicesTest(unittest.TestCase):
     def test_parses_states_and_models(self):
@@ -33,12 +29,11 @@ class DevicesTest(unittest.TestCase):
                "List of devices attached\nXYZ\tdevice usb:1-1 model:SM_S911B\n\n")
         with mock.patch.object(adb, "run", return_value=(0, out)):
             devs = adb.devices()
-        # When the adb server is just starting, its banner can come before the header line.
+
         self.assertEqual([(d.serial, d.model) for d in devs], [("XYZ", "SM S911B")])
 
     def test_no_devices(self):
         self.assertEqual(FakeAdb(devices=[]).devices(), [])
-
 
 class RunTest(unittest.TestCase):
     def test_timeout_becomes_adb_error(self):
@@ -53,7 +48,6 @@ class RunTest(unittest.TestCase):
         with mock.patch("subprocess.run", return_value=done) as run:
             self.assertEqual(adb.run(["shell", "id"], serial="S1"), (0, "ok"))
         self.assertEqual(run.call_args[0][0], ["/usr/bin/adb", "-s", "S1", "shell", "id"])
-
 
 class FindAdbTest(unittest.TestCase):
     def test_prefers_path_then_android_home(self):
@@ -72,7 +66,6 @@ class FindAdbTest(unittest.TestCase):
     def test_none_when_missing(self):
         with mock.patch("shutil.which", return_value=None), mock.patch("os.access", return_value=False):
             self.assertIsNone(ac.find_adb())
-
 
 class CallTest(unittest.TestCase):
     def test_round_trip_through_provider_format(self):
@@ -117,7 +110,6 @@ class CallTest(unittest.TestCase):
         phone = FakePhone().ready(TOKEN)
         agent_for(phone).select(TOKEN, {"b.b", "a.a"})
         self.assertEqual(sorted(phone.selected), ["a.a", "b.b"])
-
 
 class TimingCommandsTest(unittest.TestCase):
     NIGHT = {"id": "n1", "name": "Night", "enabled": True, "days": [1, 2, 3, 4, 5, 6, 7],
@@ -201,7 +193,6 @@ class TimingCommandsTest(unittest.TestCase):
         self.assertEqual(st["scheduled_now"], {})
         self.assertEqual(st["paused"], {"n1": end})
 
-
 class InstallBlocksTest(unittest.TestCase):
     IG = {"pkg": "com.instagram.android", "name": "Instagram"}
     TT = {"pkg": "com.zhiliaoapp.musically", "name": "TikTok"}
@@ -221,7 +212,7 @@ class InstallBlocksTest(unittest.TestCase):
         self.assertEqual(cm.exception.code, "bad_request")
 
     def test_installed_apps_are_kept_and_new_installs_caught(self):
-        phone = FakePhone().ready(TOKEN)  # Instagram is installed on the default fake phone
+        phone = FakePhone().ready(TOKEN)
         a = agent_for(phone)
         st = a.set_install_blocks(TOKEN, [self.IG, self.TT])
         self.assertEqual(st["install_kept"], ["com.instagram.android"])
@@ -231,7 +222,7 @@ class InstallBlocksTest(unittest.TestCase):
         st = a.status(TOKEN)
         self.assertEqual(st["install_caught"], ["com.zhiliaoapp.musically"])
         self.assertIn("com.zhiliaoapp.musically", st["blocked"])
-        # Uninstalling a kept app forgets it, so installing it again is caught.
+
         del phone.apps["com.instagram.android"]
         phone._apply()
         phone.install("com.instagram.android", "Instagram")
@@ -246,7 +237,6 @@ class InstallBlocksTest(unittest.TestCase):
         st = a.set_install_blocks(TOKEN, [])
         self.assertEqual(st["blocked"], [])
 
-
 class AppsTest(unittest.TestCase):
     def test_reads_zip_and_sorts_by_label(self):
         phone = FakePhone(apps=[("z.z", "zebra"), ("a.a", "Apple"), ("m.m", "Mango")]).ready(TOKEN)
@@ -258,7 +248,6 @@ class AppsTest(unittest.TestCase):
     def test_non_zip_reply_is_adb_error(self):
         with self.assertRaises(ac.AdbError):
             agent_for(FakePhone()).apps()
-
 
 class InstallTest(unittest.TestCase):
     def test_success(self):
@@ -281,7 +270,6 @@ class InstallTest(unittest.TestCase):
             self.assertIn(title, cm.exception.title)
             self.assertEqual(cm.exception.details, output)
 
-
 class DeviceOwnerTest(unittest.TestCase):
     def test_success(self):
         phone = FakePhone()
@@ -292,16 +280,16 @@ class DeviceOwnerTest(unittest.TestCase):
     def test_already_owner_from_earlier_attempt_is_success(self):
         phone = FakePhone()
         phone.installed = True
-        # What Android 16 prints when Anchor is already the device owner.
+
         phone.dpm_output = (
             "app.anchor.agent/.AdminReceiver was already an admin for user 0. No need to set it again.\n\n"
             "Exception occurred while executing 'set-device-owner':\njava.lang.IllegalStateException: "
             "Trying to set the device owner (app.anchor.agent/.AdminReceiver), but device owner "
             "(app.anchor.agent/.AdminReceiver) is already set.")
-        agent_for(phone).set_device_owner()  # no SetupError
+        agent_for(phone).set_device_owner()
 
     def test_real_android_errors_map_to_guidance(self):
-        # Messages as printed by DevicePolicyManagerService on Android 10-15.
+
         cases = {
             "java.lang.IllegalStateException: Not allowed to set the device owner because there are "
             "already some accounts on the device": "Remove the accounts",
@@ -322,7 +310,6 @@ class DeviceOwnerTest(unittest.TestCase):
             self.assertIn(title, cm.exception.title)
             self.assertIn(output, cm.exception.details)
 
-
 class AccountsTest(unittest.TestCase):
     MEETUP = ("me@example.com", "com.meetup.auth", "com.meetup")
 
@@ -340,7 +327,7 @@ class AccountsTest(unittest.TestCase):
         ])
 
     def test_ignores_history_and_lists_each_account_once(self):
-        out = dumpsys_account([self.MEETUP]) + dumpsys_account([self.MEETUP])  # e.g. two users
+        out = dumpsys_account([self.MEETUP]) + dumpsys_account([self.MEETUP])
         a = ac.Agent(ac.Adb("/fake"), "S")
         with mock.patch.object(a, "shell", return_value=out):
             self.assertEqual(len(a.accounts()), 1)
@@ -379,7 +366,6 @@ class AccountsTest(unittest.TestCase):
                 a.set_device_owner()
         self.assertIn("remove every account", cm.exception.body)
 
-
 class KeyStoreTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -410,7 +396,6 @@ class KeyStoreTest(unittest.TestCase):
             with self.subTest(bad=bad), self.assertRaises(ValueError):
                 ac.KeyStore.parse(bad)
 
-    # Free version: one phone per computer.
     def test_keeps_one_phone_and_refuses_others(self):
         ks = ac.KeyStore()
         ks.claim({"device_id": "A", "model": "Phone A"})
@@ -446,9 +431,7 @@ class KeyStoreTest(unittest.TestCase):
             self.assertIsNone(ks.phone())
             self.assertIsNone(ks.other_phone({"device_id": "B"}))
 
-
 class FakePhoneContractTest(unittest.TestCase):
-    """Guards the fake against drifting from the real agent's rules."""
 
     def test_unpaired_phone_rejects_commands_and_pairs_once(self):
         phone = FakePhone()
@@ -471,7 +454,6 @@ class FakePhoneContractTest(unittest.TestCase):
         self.assertFalse(st["shifted"])
         self.assertEqual(st["blocked"], [])
         self.assertEqual(st["selected"], [], "releasing all empties the anchored list")
-
 
 if __name__ == "__main__":
     unittest.main()

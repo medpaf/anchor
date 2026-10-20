@@ -1,15 +1,12 @@
-"""The Windows/Linux differences in desktop/platform_support.py."""
-
 import os
 import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
 
-import fakes  # noqa: F401 - puts desktop/ on the path
+import fakes
 import adbclient as ac
 import platform_support as plat
-
 
 class DataDirTest(unittest.TestCase):
     def test_windows_uses_appdata(self):
@@ -24,7 +21,6 @@ class DataDirTest(unittest.TestCase):
     def test_key_lives_in_the_data_folder(self):
         with tempfile.TemporaryDirectory() as d, mock.patch.object(plat, "data_dir", return_value=Path(d)):
             self.assertEqual(ac.KeyStore().path, Path(d, "key.json"))
-
 
 class FindAdbTest(unittest.TestCase):
     def test_bundled_adb_comes_first(self):
@@ -45,7 +41,6 @@ class FindAdbTest(unittest.TestCase):
         self.assertTrue(all(c.endswith("adb.exe") for c in found))
         self.assertIn(os.path.join(r"C:\L", "Android", "Sdk", "platform-tools", "adb.exe"), found)
 
-
 class AdbWindowTest(unittest.TestCase):
     def test_adb_runs_without_a_console_window(self):
         done = mock.Mock(returncode=0, stdout=b"", stderr=b"")
@@ -54,19 +49,17 @@ class AdbWindowTest(unittest.TestCase):
         self.assertEqual(run.call_args.kwargs["creationflags"], plat.NO_WINDOW)
 
     def test_adb_doesnt_search_the_network(self):
-        # adb's mDNS search opens network ports, which brings up the Windows Firewall prompt.
+
         done = mock.Mock(returncode=0, stdout=b"", stderr=b"")
         with mock.patch("subprocess.run", return_value=done) as run:
             ac.Adb("adb").run(["devices"])
         self.assertEqual(run.call_args.kwargs["env"]["ADB_MDNS"], "0")
         self.assertIn("PATH", run.call_args.kwargs["env"], "the rest of the environment is kept")
 
-
 class MachineIdTest(unittest.TestCase):
     def test_free_version_uses_the_platforms_id(self):
         with mock.patch.object(plat, "machine_id", return_value="guid-123"):
             self.assertEqual(ac.machine_id(), "guid-123")
-
 
 class UpdateTest(unittest.TestCase):
     def test_only_the_installed_app_updates_itself(self):
@@ -89,7 +82,6 @@ class UpdateTest(unittest.TestCase):
         self.assertIn("/UPDATE=1", args, "the installer opens the new version")
         self.assertEqual(popen.call_args.kwargs["creationflags"], 8 | 512, "it outlives Anchor")
 
-
 class WindowsOnlyTest(unittest.TestCase):
     def test_title_bar_and_app_id_do_nothing_elsewhere(self):
         with mock.patch.object(plat, "WINDOWS", False):
@@ -100,7 +92,6 @@ class WindowsOnlyTest(unittest.TestCase):
         with mock.patch.object(plat, "WINDOWS", True):
             self.assertIn("platform-tools", plat.adb_install_hint())
             self.assertNotIn("apt", plat.password_missing_text())
-
 
 if __name__ == "__main__":
     unittest.main()

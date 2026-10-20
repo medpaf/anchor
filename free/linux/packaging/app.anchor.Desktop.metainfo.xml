@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- What App Center, GNOME Software and Discover show for Anchor. Installed by the .deb into
-     /usr/share/metainfo. Check it with: appstreamcli validate app.anchor.Desktop.metainfo.xml -->
+
 <component type="desktop-application">
   <id>app.anchor.Desktop</id>
   <metadata_license>CC0-1.0</metadata_license>

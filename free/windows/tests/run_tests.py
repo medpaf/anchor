@@ -1,5 +1,3 @@
-"""Runs Anchor's Windows tests (no phone or screen needed):  python tests/run_tests.py"""
-
 import os
 import sys
 import unittest

@@ -1,5 +1,3 @@
-"""Everything that differs between Windows and Linux: folders, finding adb, the password prompt."""
-
 import os
 import shutil
 import subprocess
@@ -9,24 +7,18 @@ from pathlib import Path
 WINDOWS = sys.platform == "win32"
 HERE = Path(__file__).resolve().parent
 
-# adb.exe and friends open a console window on Windows unless told not to.
 NO_WINDOW = subprocess.CREATE_NO_WINDOW if WINDOWS else 0
 
-
 def data_dir():
-    """Where Anchor keeps its key and settings.
 
-    Windows: %APPDATA%\\Anchor. Linux: ~/.local/share/anchor, the same folder as the GTK app, so
-    both apps on one computer share the key."""
     if WINDOWS:
         return Path(os.environ.get("APPDATA") or Path.home() / "AppData" / "Roaming") / "Anchor"
     base = os.environ.get("XDG_DATA_HOME") or os.path.expanduser("~/.local/share")
     return Path(base) / "anchor"
 
-
 def adb_candidates():
     exe = "adb.exe" if WINDOWS else "adb"
-    bundled = HERE / "platform-tools" / exe  # shipped with the Windows installer
+    bundled = HERE / "platform-tools" / exe
     found = [str(bundled) if bundled.is_file() else None, shutil.which("adb")]
     for env in ("ANDROID_HOME", "ANDROID_SDK_ROOT"):
         if os.environ.get(env):
@@ -38,22 +30,17 @@ def adb_candidates():
         found.append(os.path.expanduser("~/Android/Sdk/platform-tools/adb"))
     return [c for c in found if c]
 
-
 def adb_env():
-    """adb's environment, without mDNS (its search for phones on the network for wireless debugging).
-    Anchor only uses USB, and mDNS makes adb listen on every network connection, which is what brings
-    up the Windows Firewall prompt. Without it adb only listens on 127.0.0.1, which the firewall allows."""
+
     env = dict(os.environ)
     env["ADB_MDNS"] = "0"
     return env
-
 
 def find_adb():
     for c in adb_candidates():
         if os.access(c, os.X_OK):
             return c
     return None
-
 
 def adb_install_hint():
     if WINDOWS:
@@ -62,9 +49,8 @@ def adb_install_hint():
     return ("Anchor uses adb to talk to your phone. Install it, then reopen Anchor:\n\n"
             "<tt>sudo apt install adb</tt>")
 
-
 def machine_id():
-    """An ID for this computer that survives reinstalls (Windows: MachineGuid)."""
+
     if WINDOWS:
         try:
             import winreg
@@ -80,18 +66,12 @@ def machine_id():
             pass
     return ""
 
-
-# ---- Release all: confirm with the computer's password ----------------------------------------
-
-RELEASE_CHECK = "/usr/libexec/anchor-release-check"  # Linux: installed with the polkit policy
+RELEASE_CHECK = "/usr/libexec/anchor-release-check"
 RELEASE_POLICY = "/usr/share/polkit-1/actions/app.anchor.release.policy"
 
-
 def system_password_check():
-    """Asks for this computer's password with the system's own dialog. Anchor never keeps the
-    password; it only learns whether it was right. Returns "ok", "cancelled", "denied" or "missing"."""
-    return _windows_password_check() if WINDOWS else _polkit_password_check()
 
+    return _windows_password_check() if WINDOWS else _polkit_password_check()
 
 def _polkit_password_check():
     if not shutil.which("pkexec"):
@@ -104,10 +84,8 @@ def _polkit_password_check():
         return "cancelled"
     return {0: "ok", 126: "cancelled"}.get(code, "denied")
 
-
 def _windows_password_check():
-    """The standard Windows security dialog, filled in with the signed-in user, then a logon check
-    of what was typed (CredUIPromptForWindowsCredentials + LogonUser)."""
+
     import ctypes
     from ctypes import wintypes
 
@@ -127,14 +105,14 @@ def _windows_password_check():
     err = credui.CredUIPromptForWindowsCredentialsW(
         ctypes.byref(info), 0, ctypes.byref(auth_package), None, 0,
         ctypes.byref(out_buf), ctypes.byref(out_size), ctypes.byref(save), CREDUIWIN_ENUMERATE_CURRENT_USER)
-    if err == 1223:  # ERROR_CANCELLED
+    if err == 1223:
         return "cancelled"
     if err != 0:
         return "missing"
     try:
         user, domain, password = (ctypes.create_unicode_buffer(514) for _ in range(3))
         sizes = [wintypes.DWORD(514) for _ in range(3)]
-        CRED_PACK_PROTECTED_CREDENTIALS = 0x1  # decrypts the password so LogonUser can check it
+        CRED_PACK_PROTECTED_CREDENTIALS = 0x1
         if not credui.CredUnPackAuthenticationBufferW(
                 CRED_PACK_PROTECTED_CREDENTIALS, out_buf, out_size, user, ctypes.byref(sizes[0]), domain, ctypes.byref(sizes[1]),
                 password, ctypes.byref(sizes[2])):
@@ -154,39 +132,28 @@ def _windows_password_check():
     finally:
         ctypes.windll.ole32.CoTaskMemFree(out_buf)
 
-
 def password_missing_text():
     if WINDOWS:
         return "Windows' password prompt couldn't be opened."
     return ("Anchor uses the system's password prompt (pkexec), which isn't installed. "
             "Install it with: sudo apt install pkexec")
 
-
-# ---- Updating on Windows ------------------------------------------------------------------------
-
 def installed_by_installer():
-    """True for Anchor installed by anchor-win.exe (its uninstaller sits next to Anchor.exe). Only that
-    copy can update itself; one run from source opens the download page instead."""
+
     if not (WINDOWS and getattr(sys, "frozen", False)):
         return False
     return (Path(sys.executable).resolve().parent / "unins000.exe").is_file()
 
-
 def run_update_installer(installer):
-    """Starts the downloaded installer on its own: silently, closing Anchor if it's still open, and
-    opening the new version when it's done (/UPDATE=1, see installer.iss). Anchor quits right after."""
+
     detached = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
     subprocess.Popen([str(installer), "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/CLOSEAPPLICATIONS",
                       "/UPDATE=1"], creationflags=detached, close_fds=True)
 
-
-# ---- Window chrome on Windows -------------------------------------------------------------------
-
 APP_ID = "app.anchor.Desktop"
 
-
 def set_app_id():
-    """Groups Anchor's windows under its own icon on the Windows taskbar."""
+
     if WINDOWS:
         import ctypes
         try:
@@ -194,9 +161,8 @@ def set_app_id():
         except (AttributeError, OSError):
             pass
 
-
 def style_title_bar(hwnd, color=(0x0D, 0x0A, 0x14)):
-    """Dark title bar in Anchor's background colour (Windows 10 20H1+, the colour on Windows 11)."""
+
     if not WINDOWS:
         return
     import ctypes

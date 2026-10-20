@@ -3,24 +3,19 @@
     package="app.anchor.agent">
 
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <!-- Wake up exactly when a timer or schedule starts or ends. -->
+
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
-    <!-- "Instagram is blocked" notices when a never-allowed app gets installed. -->
+
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <!-- Remove Anchor's own placeholder apps when a never-allowed app is released, and uninstall a
-         blocked app when the user asks for it on the computer. -->
+
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
 
-    <!-- Ask for a fingerprint (or the phone's PIN) before showing Anchor's screen. -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
 
-    <!-- Screen time per app, for the details screens. Turned on by the computer over USB. -->
     <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" />
 
-    <!-- See every installed app (Android 11+ package visibility). Needed to keep track of apps
-         Anchor hides (hidden apps lose their launcher entry) and to notice never-allowed installs. -->
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
-    <!-- Lets the agent list every app that has a launcher icon. -->
+
     <queries>
         <intent>
             <action android:name="android.intent.action.MAIN" />
@@ -56,8 +51,6 @@
             </intent-filter>
         </receiver>
 
-        <!-- Command channel for the desktop app. Only adb (shell/root uid) may call it;
-             every state-changing command also needs the computer's key. -->
         <provider
             android:name=".CommandProvider"
             android:authorities="app.anchor.agent.cmd"

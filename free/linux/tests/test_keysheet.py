@@ -1,13 +1,10 @@
-"""Unit tests for desktop/keysheet.py (the printable backup key page)."""
-
 import unittest
 from datetime import datetime
 
-from fakes import ROOT  # noqa: F401  (puts desktop/ on sys.path)
+from fakes import ROOT
 import keysheet
 
 KEY = "ABCD-EFGH-IJKL-MNOP-QRST-UVWX-YZ23-4567"
-
 
 class KeySheetTest(unittest.TestCase):
     def test_the_page_has_the_key_and_how_to_use_it(self):
@@ -22,7 +19,6 @@ class KeySheetTest(unittest.TestCase):
 
     def test_no_phone_no_mention(self):
         self.assertNotIn("paired with", keysheet.page(KEY)[2][1])
-
 
 if __name__ == "__main__":
     unittest.main()

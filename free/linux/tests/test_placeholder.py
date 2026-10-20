@@ -1,5 +1,3 @@
-"""Unit tests for desktop/placeholder.py: the APK must name the blocked app and be validly signed."""
-
 import os
 import shutil
 import subprocess
@@ -14,11 +12,9 @@ import placeholder
 
 SDK = Path(os.environ.get("ANDROID_HOME") or os.path.expanduser("~/Android/Sdk"))
 
-
 def build_tool(name):
     tools = sorted((SDK / "build-tools").glob(f"*/{name}")) if (SDK / "build-tools").exists() else []
     return tools[-1] if tools else None
-
 
 class PlaceholderTest(unittest.TestCase):
     def setUp(self):
@@ -71,7 +67,6 @@ class PlaceholderTest(unittest.TestCase):
             with self.assertRaises(placeholder.PlaceholderError) as cm:
                 placeholder.build_apk("com.reddit.frontpage")
         self.assertIn("sudo apt install openssl", str(cm.exception))
-
 
 if __name__ == "__main__":
     unittest.main()

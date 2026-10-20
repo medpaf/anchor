@@ -1,7 +1,3 @@
-"""Drives the real Anchor window (Qt) against a fake phone. Runs without a screen (offscreen Qt).
-
-The same scenarios as the Linux app's tests (free/linux/tests/test_gui.py)."""
-
 import os
 import shutil
 import subprocess
@@ -12,31 +8,29 @@ from unittest import mock
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from fakes import FakeAdb, FakePhone, ac, data_env  # noqa: E402
+from fakes import FakeAdb, FakePhone, ac, data_env
 
-from PySide6.QtCore import Qt  # noqa: E402
-from PySide6.QtTest import QTest  # noqa: E402
-from PySide6.QtWidgets import QApplication, QPlainTextEdit, QPushButton  # noqa: E402
+from PySide6.QtCore import Qt
+from PySide6.QtTest import QTest
+from PySide6.QtWidgets import QApplication, QPlainTextEdit, QPushButton
 
-import anchor  # noqa: E402
-import platform_support as plat  # noqa: E402
-import widgets  # noqa: E402
+import anchor
+import platform_support as plat
+import widgets
 
 REAL_ERROR_DIALOG = anchor.AnchorWindow.error_dialog
 
 INSTAGRAM, YOUTUBE, DIALER = "com.instagram.android", "com.google.android.youtube", "com.google.android.dialer"
 REDDIT = "com.reddit.frontpage"
 
-
 def shown(widget):
     return not widget.isHidden()
-
 
 class GuiTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.app = anchor.make_app(["anchor-tests"])
-        # Making a placeholder signing key takes a moment; make one for the whole run.
+
         cls.key_tmp = tempfile.TemporaryDirectory()
         with mock.patch.dict(os.environ, data_env(cls.key_tmp.name)):
             import placeholder
@@ -52,17 +46,17 @@ class GuiTest(unittest.TestCase):
         self.errors, self.toasts, self.dialogs = [], [], []
         patches = [
             mock.patch.dict(os.environ, data_env(self.tmp.name)),
-            mock.patch.object(plat.Path, "home", return_value=plat.Path(self.tmp.name)),  # never the real home
+            mock.patch.object(plat.Path, "home", return_value=plat.Path(self.tmp.name)),
             mock.patch.object(anchor.ac, "find_adb", return_value="/fake/adb"),
             mock.patch.object(anchor.ac, "Adb", side_effect=lambda path: self.adb),
-            # Tests trigger polls by hand instead of every 2 seconds.
+
             mock.patch.object(anchor.AnchorWindow, "start_polling", lambda win: None),
             mock.patch.object(anchor.AnchorWindow, "error_dialog",
                               lambda win, title, body, details="": self.errors.append((title, body))),
             mock.patch.object(anchor.AnchorWindow, "toast",
                               lambda win, text, timeout=3: self.toasts.append(text)),
             mock.patch.object(widgets.Overlay, "present", lambda d, parent=None: self.dialogs.append(d)),
-            # The system password prompt: tests decide what the user does ("ok" unless set).
+
             mock.patch.object(anchor, "system_password_check", lambda: self.password_answer),
         ]
         for p in patches:
@@ -75,7 +69,7 @@ class GuiTest(unittest.TestCase):
         self.password_answer = "ok"
 
     def tearDown(self):
-        # Let this test's background work and its callbacks finish before the next test starts.
+
         self.pump(lambda: not anchor.RUNNING, timeout=20, fail=False)
         self.pump(lambda: False, timeout=0.1, fail=False)
         if self.win:
@@ -83,7 +77,6 @@ class GuiTest(unittest.TestCase):
             self.win.deleteLater()
             self.pump(lambda: False, timeout=0.05, fail=False)
 
-    # ---- helpers ----
     def open(self, phone=None, devices=None):
         self.phone = phone or FakePhone()
         self.adb = FakeAdb(self.phone, devices)
@@ -112,8 +105,7 @@ class GuiTest(unittest.TestCase):
         return FakePhone(**kw).ready(self.token)
 
     def toggle(self, pkg, on=True):
-        """Clicks the app's Anchor (on) or Release (off) button if it isn't in that state already, and says
-        yes when an app that came with the phone asks first."""
+
         if (pkg in self.win.selected) != on:
             asked = len(self.dialogs)
             self.win.rows[pkg].anchor_button.click()
@@ -123,7 +115,6 @@ class GuiTest(unittest.TestCase):
     def wait_synced(self):
         self.pump(lambda: self.win.sync_source is None and not self.win.working, what="selection sync")
 
-    # ---- connection states ----
     def test_no_phone_shows_connect_page(self):
         self.open(devices=[])
         self.wait_page("nophone")
@@ -144,7 +135,6 @@ class GuiTest(unittest.TestCase):
             self.open()
         self.assertEqual(self.page(), "noadb")
 
-    # ---- setup ----
     def test_fresh_phone_goes_through_setup(self):
         self.open(FakePhone())
         self.wait_page("setup")
@@ -167,7 +157,7 @@ class GuiTest(unittest.TestCase):
         steps = [s.get_visible_child_name() for s in self.win.step_rows]
         self.assertEqual(steps, ["done", "todo", "todo"])
         self.assertTrue(self.win.setup_button.isEnabled())
-        # The user removes the accounts and tries again.
+
         phone.dpm_output = None
         self.win.setup_button.click()
         self.wait_page("main")
@@ -210,7 +200,6 @@ class GuiTest(unittest.TestCase):
         self.assertIn("install", [cmd[0] for cmd in self.adb.log])
         self.assertEqual(self.phone.version, ac.AGENT_VERSION)
 
-    # ---- pairing ----
     def test_phone_paired_with_other_computer(self):
         other = "f" * 32
         self.open(FakePhone().ready(other))
@@ -245,7 +234,6 @@ class GuiTest(unittest.TestCase):
         self.assertEqual(QApplication.clipboard().text(), ac.KeyStore.format(self.token))
         self.assertIn("Backup key copied", self.toasts)
 
-    # ---- shifting ----
     def test_lists_phone_apps(self):
         self.open(self.ready_phone())
         self.wait_page("main")
@@ -378,7 +366,7 @@ class GuiTest(unittest.TestCase):
         phone = self.ready_phone()
         self.open(phone)
         self.wait_page("main")
-        phone.selected, phone.shifted = {INSTAGRAM}, True  # the user pressed "Anchor" on the phone
+        phone.selected, phone.shifted = {INSTAGRAM}, True
         phone._apply()
         self.win.poll()
         self.pump(lambda: self.win.hero_title.text() == "Anchored", what="status refresh")
@@ -386,7 +374,7 @@ class GuiTest(unittest.TestCase):
 
     def test_old_list_from_before_buttons_is_cleared(self):
         phone = self.ready_phone()
-        phone.selected = {INSTAGRAM}  # saved, but not anchored
+        phone.selected = {INSTAGRAM}
         self.open(phone)
         self.wait_page("main")
         self.assertEqual(phone.selected, set())
@@ -400,7 +388,6 @@ class GuiTest(unittest.TestCase):
             self.pump(lambda: any("Couldn't reach the phone" in t for t in self.toasts), what="error")
         self.pump(lambda: self.win.rows[INSTAGRAM].anchor_button.text() == "Anchor", what="undone")
 
-    # ---- auto-release ----
     def test_timer_running_out_releases_the_apps(self):
         phone = self.ready_phone()
         phone.selected, phone.until = {INSTAGRAM}, FakePhone.now() + 600
@@ -423,7 +410,6 @@ class GuiTest(unittest.TestCase):
         self.pump(lambda: phone.mode() is None and not self.win.working, what="release")
         self.assertEqual(phone.blocked, set())
 
-    # ---- uninstall ----
     def test_uninstall_button_only_on_apps_that_can_be_uninstalled(self):
         self.open(self.ready_phone())
         self.wait_page("main")
@@ -562,7 +548,7 @@ class GuiTest(unittest.TestCase):
     def test_uninstalling_a_never_allowed_app_puts_the_placeholder_in(self):
         phone = self.ready_phone()
         phone.install_blocks = [{"pkg": INSTAGRAM, "name": "Instagram"}]
-        phone.kept = {INSTAGRAM}  # it was on the phone before it was added
+        phone.kept = {INSTAGRAM}
         self.open(phone)
         self.wait_page("main")
         self.win.rows[INSTAGRAM].uninstall_button.click()
@@ -570,7 +556,6 @@ class GuiTest(unittest.TestCase):
         self.pump(lambda: INSTAGRAM in phone.placeholders and not self.win.placing, what="placeholder")
         self.assertFalse(phone.install(INSTAGRAM, "Instagram"))
 
-    # ---- per-app schedules ----
     NIGHT = {"id": "n1", "name": "YouTube", "enabled": True, "days": [1, 2, 3, 4, 5, 6, 7],
              "start": "22:30", "end": "07:00", "packages": [YOUTUBE]}
 
@@ -621,7 +606,7 @@ class GuiTest(unittest.TestCase):
         self.assertEqual((sch["packages"], sch["days"], sch["start"], sch["end"], sch["enabled"]),
                          ([YOUTUBE], [1, 2, 3, 4, 5, 6, 7], "22:30", "07:00", True))
         self.assertEqual(self.toasts[-1], "YouTube: Every day 22:30–07:00 saved")
-        # The open dialog and the app's row both show it; other apps are untouched.
+
         self.assertEqual([r.get_title() for r in self.window_rows()], ["Every day", "Add a time"])
         self.assertEqual(self.win.rows[YOUTUBE].get_subtitle(), "Every day · 22:30–07:00")
         self.assertTrue(self.is_accent(self.win.rows[YOUTUBE]))
@@ -696,7 +681,7 @@ class GuiTest(unittest.TestCase):
         phone._apply()
         self.open(phone)
         self.wait_page("main")
-        # Only YouTube is hidden: Instagram is merely selected, and nothing is shifted.
+
         self.assertEqual(phone.blocked, {YOUTUBE})
         self.assertEqual(self.win.hero_title.text(), "On schedule")
         self.assertIn("YouTube is hidden by its schedule right now", self.win.hero_subtitle.text())
@@ -749,7 +734,6 @@ class GuiTest(unittest.TestCase):
         self.assertEqual(phone.schedules[0]["id"], "n1")
         self.assertIn("Old schedules were removed", self.toasts[-1])
 
-    # ---- permissions ----
     def test_anchoring_removes_permissions_and_releasing_restores_them(self):
         phone = self.ready_phone()
         phone.granted = {INSTAGRAM: {"android.permission.CAMERA", "android.permission.ACCESS_FINE_LOCATION"},
@@ -799,7 +783,6 @@ class GuiTest(unittest.TestCase):
         with mock.patch.object(plat.shutil, "which", return_value=None):
             self.assertEqual(real(), "missing")
 
-    # ---- app details ----
     def open_details(self, pkg):
         self.win.rows[pkg].activated.emit()
         d = self.dialogs[-1]
@@ -872,13 +855,12 @@ class GuiTest(unittest.TestCase):
         self.assertEqual(phone.blocked, {INSTAGRAM})
         self.assertEqual([d for d in self.dialogs if isinstance(d, widgets.PanelDialog)], [])
 
-    # ---- Never allow ----
     def never_rows(self):
         return {row.pkg: row for row in self.win.never_children if hasattr(row, "pkg")}
 
     def test_never_allow_starts_empty_on_first_connect(self):
         phone = self.ready_phone()
-        phone.install_blocks_set = False  # a phone Anchor never set a list on
+        phone.install_blocks_set = False
         self.open(phone)
         self.wait_page("main")
         self.pump(lambda: False, timeout=0.5, fail=False)
@@ -890,7 +872,7 @@ class GuiTest(unittest.TestCase):
         self.assertFalse(self.win.never_section.is_open)
 
     def test_defaults_are_not_re_added(self):
-        phone = self.ready_phone()  # list already set (here: empty, the user released everything)
+        phone = self.ready_phone()
         self.open(phone)
         self.wait_page("main")
         self.pump(lambda: False, timeout=0.3, fail=False)
@@ -925,7 +907,7 @@ class GuiTest(unittest.TestCase):
     def test_uninstall_a_blocked_app_that_got_installed(self):
         phone = self.ready_phone()
         phone.install_blocks = [{"pkg": "com.zhiliaoapp.musically", "name": "TikTok"}]
-        phone.apps["com.zhiliaoapp.musically"] = "TikTok"  # installed before the block was set up
+        phone.apps["com.zhiliaoapp.musically"] = "TikTok"
         phone._apply()
         self.open(phone)
         self.wait_page("main")
@@ -965,7 +947,7 @@ class GuiTest(unittest.TestCase):
     def test_release_brings_a_caught_app_back(self):
         phone = self.ready_phone()
         phone.install_blocks = [{"pkg": "com.zhiliaoapp.musically", "name": "TikTok"}]
-        phone.install("com.zhiliaoapp.musically", "TikTok")  # installed before any placeholder
+        phone.install("com.zhiliaoapp.musically", "TikTok")
         self.open(phone)
         self.wait_page("main")
         self.never_rows()["com.zhiliaoapp.musically"].release.click()
@@ -1062,7 +1044,6 @@ class GuiTest(unittest.TestCase):
         phone.install("com.zhiliaoapp.musically", "TikTok")
         self.assertIn("com.zhiliaoapp.musically", phone.blocked)
 
-    # ---- list filtering ----
     def visible_rows(self):
         return sorted(pkg for pkg, row in self.win.rows.items() if shown(row))
 
@@ -1076,7 +1057,7 @@ class GuiTest(unittest.TestCase):
 
     def test_search_covers_both_sections(self):
         self.open_shifted(INSTAGRAM)
-        self.win.search.setText("o")  # matches apps in both sections
+        self.win.search.setText("o")
         self.pump(lambda: INSTAGRAM in self.visible_rows() and YOUTUBE in self.visible_rows(), what="search")
         self.win.search.setText("zzz")
         self.pump(lambda: self.visible_rows() == [], what="search")
@@ -1125,7 +1106,6 @@ class GuiTest(unittest.TestCase):
         self.pump(lambda: len(self.win.picked_section.rows) == 2, what="rows moved")
         self.assertEqual([r.label for r in self.win.picked_section.rows], ["Instagram", "YouTube"])
 
-    # ---- free version: one phone per computer ----
     def claim_other_phone(self):
         ac.KeyStore().claim({"device_id": "0ther0phone00000", "model": "Samsung Galaxy S24"})
 
@@ -1208,7 +1188,7 @@ class GuiTest(unittest.TestCase):
         self.assertEqual(opened, ["https://github.com/medpaf/anchor/releases/tag/windows"])
 
     def update_on_windows(self, download_error=None):
-        """Check for updates… → Update, with the download, installer and quitting replaced."""
+
         self.open(self.ready_phone())
         self.wait_page("main")
         installer = os.path.join(self.tmp.name, "anchor-win.exe")
@@ -1293,7 +1273,6 @@ class GuiTest(unittest.TestCase):
         self.assertEqual(about.get_website(), "https://github.com/medpaf/anchor")
         self.assertEqual(about.site.text(), "GitHub repository")
 
-    # ---- removal ----
     def test_remove_unblocks_and_uninstalls(self):
         phone = self.ready_phone()
         phone.selected, phone.shifted = {INSTAGRAM}, True
@@ -1307,7 +1286,7 @@ class GuiTest(unittest.TestCase):
         self.wait_page("setup")
 
     def test_see_through_icons_keep_their_colour(self):
-        # Qt's SVG renderer can't read CSS rgba(): such icons used to come out black.
+
         image = widgets.symbol("phone", "rgba(238, 234, 247, 0.42)", 24).toImage()
         colours = {image.pixelColor(x, y).name() for x in range(image.width()) for y in range(image.height())
                    if image.pixelColor(x, y).alpha() > 0}
@@ -1332,13 +1311,12 @@ class GuiTest(unittest.TestCase):
         text = self.win.pages["nophone"].text
         self.assertGreaterEqual(text.height(), text.heightForWidth(text.width()), "wrapped text isn't cut off")
 
-    # ---- dialogs ----
     def test_long_messages_fit_in_their_dialog(self):
         self.open(self.ready_phone())
         self.wait_page("main")
         REAL_ERROR_DIALOG(self.win, "Couldn't do that", "A long explanation. " * 30)
         d = self.dialogs[-1]
-        d.show()  # really on screen (the tests normally only collect dialogs), so Qt lays it out
+        d.show()
         d._place()
         self.pump(lambda: False, timeout=0.3, fail=False)
         body = d.body
@@ -1355,7 +1333,6 @@ class GuiTest(unittest.TestCase):
         QTest.keyClick(d, Qt.Key_Escape)
         self.assertEqual(answers, ["cancel"])
         self.assertTrue(self.phone.installed)
-
 
 if __name__ == "__main__":
     unittest.main()

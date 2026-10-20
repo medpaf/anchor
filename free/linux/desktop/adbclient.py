@@ -1,5 +1,3 @@
-"""Talks to the Anchor agent on an Android phone over adb (USB)."""
-
 import base64
 import io
 import json
@@ -15,24 +13,19 @@ from pathlib import Path
 AGENT_PKG = "app.anchor.agent"
 AGENT_ADMIN = f"{AGENT_PKG}/.AdminReceiver"
 AGENT_URI = "content://app.anchor.agent.cmd"
-AGENT_VERSION = 44  # must match CommandProvider.VERSION in the bundled APK
-EDITION = "free"  # the phone app is the same for free and Pro; it shows this edition's name
-
+AGENT_VERSION = 44
+EDITION = "free"
 
 class AdbError(Exception):
-    """adb failed or the phone went away."""
-
+    pass
 
 class AgentError(Exception):
-    """The agent on the phone refused a command."""
 
     def __init__(self, code, message):
         super().__init__(message)
         self.code = code
 
-
 class SetupError(Exception):
-    """A setup step failed; carries a friendly explanation and the raw output."""
 
     def __init__(self, title, body, details=""):
         super().__init__(title)
@@ -40,13 +33,11 @@ class SetupError(Exception):
         self.body = body
         self.details = details.strip()
 
-
 @dataclass
 class Device:
     serial: str
-    state: str  # "device", "unauthorized", "offline", ...
+    state: str
     model: str = ""
-
 
 @dataclass
 class Account:
@@ -54,20 +45,15 @@ class Account:
     type: str
     package: str = ""
 
-
-# `dumpsys account` lines: "Account {name=me@x.com, type=com.google}" and
-# "ServiceInfo: AuthenticatorDescription {type=com.google}, ComponentInfo{com.google.android.gms/...}"
 _ACCOUNT_RE = re.compile(r"Account \{name=(.*?), type=([^}]*)\}")
 _AUTHENTICATOR_RE = re.compile(r"AuthenticatorDescription \{type=([^}]*)\}, ComponentInfo\{([^/}]+)/")
 
-# Account types whose owning app has an unhelpful name (e.g. "Google Play services").
 KNOWN_ACCOUNT_TYPES = {
     "com.google": "Google",
     "com.google.work": "Google (work)",
     "com.osp.app.signin": "Samsung account",
     "com.xiaomi": "Xiaomi account",
 }
-
 
 def find_adb():
     candidates = [shutil.which("adb")]
@@ -79,7 +65,6 @@ def find_adb():
         if c and os.access(c, os.X_OK):
             return c
     return None
-
 
 class Adb:
     def __init__(self, path):
@@ -109,9 +94,7 @@ class Adb:
             found.append(Device(parts[0], parts[1], info.get("model", "").replace("_", " ")))
         return found
 
-
 class Agent:
-    """The Anchor companion app on one connected phone."""
 
     def __init__(self, adb, serial):
         self.adb = adb
@@ -150,7 +133,7 @@ class Agent:
             return
         current = re.search(r"but device owner \((.*?)\) is already set", out)
         if current and current.group(1).startswith(AGENT_PKG + "/"):
-            return  # an earlier attempt already made Anchor the device owner
+            return
         low = out.lower()
         if "account" in low:
             raise SetupError("Remove the accounts from your phone first", self._accounts_help(), out)
@@ -177,8 +160,7 @@ class Agent:
                          "Android refused the request. The message from the phone is below.", out)
 
     def accounts(self):
-        """Accounts signed in on the phone, as Account(name, type, package) — package is the app
-        that owns that kind of account (from `dumpsys account`)."""
+
         out = self.shell("dumpsys account")
         owners = dict(_AUTHENTICATOR_RE.findall(out))
         found = []
@@ -218,8 +200,6 @@ class Agent:
     def uninstall(self):
         self.adb.run(["uninstall", AGENT_PKG], serial=self.serial, timeout=60)
 
-    # ---- Commands -----------------------------------------------------------------------
-
     def call(self, method, **payload):
         cmd = f"content call --uri {AGENT_URI} --method {method}"
         if payload:
@@ -246,17 +226,17 @@ class Agent:
         return self.call("select", token=token, packages=sorted(packages))
 
     def shift(self, token, packages, minutes=None):
-        """Anchors until released, or for `minutes` when given (the apps come back by themselves)."""
+
         if minutes is None:
             return self.call("shift", token=token, packages=sorted(packages))
         return self.call("shift", token=token, packages=sorted(packages), minutes=int(minutes))
 
     def set_schedules(self, token, schedules):
-        """schedules: [{id, name, enabled, days: [1..7 = Mon..Sun], start: "22:30", end: "07:00"}]"""
+
         return self.call("schedules", token=token, schedules=schedules)
 
     def install_placeholder(self, package):
-        """Installs Anchor's placeholder under `package`, so the real app can't be installed."""
+
         import placeholder
         path = placeholder.write_apk(package)
         try:
@@ -265,42 +245,40 @@ class Agent:
             path.unlink(missing_ok=True)
         if "Success" not in out:
             raise AdbError(out.strip().splitlines()[-1] if out.strip() else "install failed")
-        self.call("check")  # hide and lock it right away
+        self.call("check")
 
     def installed_package(self, package):
         return f"package:{package}" in self.shell(f"pm list packages -u {package}")
 
     def app_info(self, package):
-        """Version, dates and permissions of one app: {label, version, installed, updated, system,
-        blocked, permissions: [{name, label, granted, locked, had}]}."""
+
         return self.call("app_info", pkg=package)
 
     def set_permission(self, token, package, permission, grant):
-        """Grants or removes one permission. Returns the app's updated info."""
+
         return self.call("set_permission", token=token, pkg=package, permission=permission, grant=bool(grant))
 
     def end_anchoring(self, token):
-        """Stops anchoring (used when the last anchored app is released). Schedules keep running."""
+
         return self.call("end", token=token)
 
     def uninstall_app(self, token, package):
-        """Uninstalls an app the user picked (not system apps). Its data on the phone is deleted."""
+
         return self.call("uninstall", token=token, pkg=package)
 
     def uninstall_blocked(self, token, package):
-        """Removes a never-allowed app that got installed (only when the user asks)."""
+
         return self.call("uninstall_blocked", token=token, pkg=package)
 
     def set_install_blocks(self, token, apps):
-        """The full 'Never allow' list: [{pkg, name}]. Apps on it can't be used until released."""
+
         return self.call("install_blocks", token=token, apps=apps)
 
     def allow_background(self):
-        """Lets the phone app wake up on time for timers and schedules (no battery optimisation,
-        and permission for exact alarms) and read screen time for app details. Safe to repeat."""
+
         self.shell(f"dumpsys deviceidle whitelist +{AGENT_PKG}")
         self.shell(f"cmd appops set {AGENT_PKG} SCHEDULE_EXACT_ALARM allow")
-        self.shell(f"cmd appops set {AGENT_PKG} GET_USAGE_STATS allow")  # screen time in app details
+        self.shell(f"cmd appops set {AGENT_PKG} GET_USAGE_STATS allow")
 
     def unshift(self, token):
         return self.call("unshift", token=token)
@@ -309,7 +287,7 @@ class Agent:
         return self.call("release", token=token)
 
     def apps(self):
-        """Returns (apps, icons): apps is a list of {pkg, label, system}; icons maps pkg -> PNG bytes."""
+
         code, data, err = self.adb.run(
             ["exec-out", f"content read --uri {AGENT_URI}/apps.zip"],
             serial=self.serial, timeout=60, binary=True)
@@ -324,7 +302,6 @@ class Agent:
         apps.sort(key=lambda a: a["label"].casefold())
         return apps, icons
 
-
 def machine_id():
     for p in ("/etc/machine-id", "/var/lib/dbus/machine-id"):
         try:
@@ -333,11 +310,7 @@ def machine_id():
             pass
     return ""
 
-
 class KeyStore:
-    """The secret that lets this computer release a phone. Kept in ~/.local/share/anchor/key.json.
-
-    The free version also keeps the one phone this computer works with, next to the key."""
 
     def __init__(self):
         base = os.environ.get("XDG_DATA_HOME") or os.path.expanduser("~/.local/share")
@@ -366,17 +339,15 @@ class KeyStore:
         self._write(data)
         return token
 
-    # ---- Free version: one phone per computer ----------------------------------------------
-
     def phone(self):
-        """The phone this computer is kept for, or None. A key copied from another computer has none."""
+
         p = self._read().get("phone")
         if not p or p.get("machine") != machine_id():
             return None
         return p
 
     def other_phone(self, st):
-        """The phone this computer is kept for, when the status `st` comes from a different one."""
+
         p, device_id = self.phone(), st.get("device_id")
         if p and device_id and p["id"] != device_id:
             return p
@@ -389,7 +360,7 @@ class KeyStore:
             self._write(data)
 
     def free_slot(self, device_id):
-        """Anchor was removed from that phone: another phone can be set up."""
+
         p = self.phone()
         if p and p["id"] == device_id:
             data = self._read()
@@ -397,12 +368,11 @@ class KeyStore:
             self._write(data)
 
     def forget_phone(self):
-        """For a phone that was reset or lost. A new key, so the old phone can't be switched back in."""
+
         data = self._read()
         data.pop("phone", None)
         data["token"] = secrets.token_hex(16)
         self._write(data)
-
 
     @staticmethod
     def format(token):

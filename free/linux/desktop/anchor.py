@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-"""Anchor: block apps on your Android phone; only this computer can unblock them."""
 
 import json
 import os
@@ -17,25 +16,25 @@ import gi
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 gi.require_version("Pango", "1.0")
-from gi.repository import Adw, Gdk, Gio, GLib, Gtk, Pango  # noqa: E402
+from gi.repository import Adw, Gdk, Gio, GLib, Gtk, Pango
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-import adbclient as ac  # noqa: E402
-import catalog  # noqa: E402
-import keysheet  # noqa: E402
-import updates  # noqa: E402
-from permnames import friendly  # noqa: E402
-from timetext import DAY_NAMES, clock, countdown, days_text, hours_text, plural, screen_time  # noqa: E402
+import adbclient as ac
+import catalog
+import keysheet
+import updates
+from permnames import friendly
+from timetext import DAY_NAMES, clock, countdown, days_text, hours_text, plural, screen_time
 
 APP_ID = "app.anchor.Desktop"
 APK = HERE / "anchor-agent.apk"
-PACKAGED = str(HERE).startswith("/usr/")  # installed from anchor-linux.deb, not by install.sh
+PACKAGED = str(HERE).startswith("/usr/")
 VERSION = "1.0"
 WINDOW_TITLE = "Anchor - Free"
 WEBSITE = "https://github.com/medpaf/anchor"
-UPDATE_CHANNEL = "linux"  # Menu → Check for updates… compares with the "linux" release
-DONATE_URL = "https://github.com/sponsors/medpaf"  # free version: Menu → Buy me a coffee
+UPDATE_CHANNEL = "linux"
+DONATE_URL = "https://github.com/sponsors/medpaf"
 
 CSS = """
 /* ---- Palette: deep violet-black with a violet accent ---- */
@@ -166,18 +165,15 @@ statuspage > scrolledwindow > viewport > box { margin-left: 24px; margin-right: 
 .status-text { line-height: 1.3; color: alpha(@window_fg_color, 0.75); }
 """
 
-
-RUNNING = set()  # background threads still at work (tests wait for these between cases)
-
+RUNNING = set()
 
 def in_background(work, done=None, fail=None):
-    """Runs work() on a thread, then done(result) or fail(exception) on the GTK main loop."""
 
     def runner():
         try:
             result = work()
-        except Exception as e:  # noqa: BLE001 - shown to the user
-            # Bind e now: Python clears the name when the except block ends.
+        except Exception as e:
+
             if fail:
                 GLib.idle_add(lambda err=e: fail(err) and False)
             return
@@ -188,18 +184,13 @@ def in_background(work, done=None, fail=None):
     RUNNING.add(thread)
     thread.start()
 
-
-RELEASE_CHECK = "/usr/libexec/anchor-release-check"  # installed with polkit/app.anchor.release.policy
+RELEASE_CHECK = "/usr/libexec/anchor-release-check"
 RELEASE_POLICY = "/usr/share/polkit-1/actions/app.anchor.release.policy"
-UNINSTALL_HELPER = "/usr/libexec/anchor-uninstall"  # removes the .deb, or install.sh's system files
-UPDATE_HELPER = "/usr/libexec/anchor-update"  # installs a downloaded anchor-linux.deb (only in the .deb)
-
+UNINSTALL_HELPER = "/usr/libexec/anchor-uninstall"
+UPDATE_HELPER = "/usr/libexec/anchor-update"
 
 def system_password_check():
-    """Asks for the computer's admin password with the system's own dialog (polkit). Anchor never
-    sees the password; it only learns whether it was accepted. Returns "ok", "cancelled", "denied"
-    or "missing". With Anchor's polkit policy installed the dialog says "Authentication is required
-    to release your anchored apps"; without it, polkit's generic "...to run `/bin/true`..."."""
+
     if not shutil.which("pkexec"):
         return "missing"
     command = RELEASE_CHECK if os.access(RELEASE_CHECK, os.X_OK) else "/bin/true"
@@ -210,17 +201,13 @@ def system_password_check():
         return "cancelled"
     return {0: "ok", 126: "cancelled"}.get(code, "denied")
 
-
 class PhoneLimit(Exception):
-    """Free version: this computer is already set up for a different phone."""
 
     def __init__(self, other):
         super().__init__("This computer is set up for another phone")
         self.other = other
 
-
 class _HeaderText:
-    """Lets a section's title or hint be set like a label, while living on its header row."""
 
     def __init__(self, row, section, part):
         self.row, self.section, self.part = row, section, part
@@ -231,15 +218,14 @@ class _HeaderText:
     def get_label(self):
         return self.row.get_title() if self.part == "title" else self.row.get_subtitle()
 
-
 def write_key_pdf(path, items):
-    """Draws the backup key page (keysheet.page) as a one-page A4 PDF with cairo."""
-    import cairo  # python3-cairo (a dependency of the .deb and install.sh)
+
+    import cairo
 
     width, height, margin = 595, 842, 64
     surface = cairo.PDFSurface(str(path), width, height)
     cr = cairo.Context(surface)
-    styles = {  # size, bold, monospace, space before
+    styles = {
         "title": (24, True, False, 0), "key": (16, True, True, 22), "small": (10, False, False, 14),
         "heading": (13, True, False, 22), "text": (11, False, False, 8),
     }
@@ -260,7 +246,7 @@ def write_key_pdf(path, items):
         lines.append(line)
         y += before
         step = size * 1.45
-        if style == "key":  # the key on a light box, easy to read and copy
+        if style == "key":
             cr.set_source_rgb(0.94, 0.92, 0.98)
             cr.rectangle(margin, y, width - 2 * margin, step * len(lines) + 28)
             cr.fill()
@@ -287,7 +273,7 @@ class AnchorWindow(Adw.ApplicationWindow):
         self.device_key = None
         self.agent = None
         self.model = ""
-        self.device_id = None  # the connected phone's Android ID
+        self.device_id = None
         self.status = {}
         self.selected = set()
         self.rows = {}
@@ -302,7 +288,7 @@ class AnchorWindow(Adw.ApplicationWindow):
         self.install_blocks = []
         self.never_key = None
         self.placing = False
-        self.placeholder_failed = {}  # pkg -> why the placeholder couldn't be installed
+        self.placeholder_failed = {}
 
         self.build_ui()
         self.install_actions()
@@ -312,8 +298,6 @@ class AnchorWindow(Adw.ApplicationWindow):
             self.poll()
         else:
             self.show_page("noadb")
-
-    # ---- UI construction ---------------------------------------------------------------
 
     def build_ui(self):
         self.toasts = Adw.ToastOverlay()
@@ -397,7 +381,7 @@ class AnchorWindow(Adw.ApplicationWindow):
         return page
 
     def build_limit_page(self):
-        # Free version: one phone per computer. Shown for a phone paired with this key that isn't that one.
+
         self.limit_page = Adw.StatusPage(icon_name="phone-symbolic", title="The free version works with one phone")
         button = Gtk.Button(label="Remove Anchor from this phone", halign=Gtk.Align.CENTER)
         button.add_css_class("cta")
@@ -481,7 +465,6 @@ class AnchorWindow(Adw.ApplicationWindow):
         clamp = Adw.Clamp(maximum_size=600, margin_top=18, margin_bottom=32, margin_start=16, margin_end=16)
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18)
 
-        # Status bar: emblem, what's going on, and the one main button.
         self.hero = Gtk.Box(spacing=16)
         self.hero.add_css_class("card")
         self.hero.add_css_class("hero")
@@ -517,8 +500,6 @@ class AnchorWindow(Adw.ApplicationWindow):
 
         self.build_never_allow(box)
 
-        # Two sections: the apps on your block list, and everything else. Switching an app on or
-        # off moves it from one to the other.
         self.picked_title, self.picked_hint, self.picked_list = self.build_section(
             box, "Nothing anchored. Tap Anchor on an app below.", "anchor-section")
         self.other_title, self.other_hint, self.other_list = self.build_section(
@@ -532,7 +513,7 @@ class AnchorWindow(Adw.ApplicationWindow):
         rows = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE)
         rows.add_css_class("boxed-list")
         self.never_row = Adw.ExpanderRow(title="Never allow")
-        never_icon = Gtk.Image(icon_name="never-allow-section")  # the phone app's ic_block, same size and colour
+        never_icon = Gtk.Image(icon_name="never-allow-section")
         never_icon.add_css_class("section-icon")
         self.never_row.add_prefix(never_icon)
         self.never_row.add_css_class("never-allow")
@@ -573,7 +554,7 @@ class AnchorWindow(Adw.ApplicationWindow):
             elif pkg in kept:
                 row.set_subtitle("Was already on your phone, so it's not affected. Anchor it to hide it.")
             elif pkg in placeholders:
-                row.set_subtitle(pkg)  # blocked from being installed: show which package
+                row.set_subtitle(pkg)
             elif pkg in self.placeholder_failed:
                 row.set_subtitle("Can be installed, but is hidden right away (the install couldn't be blocked)")
             else:
@@ -596,8 +577,7 @@ class AnchorWindow(Adw.ApplicationWindow):
         self.never_children.append(add)
 
     def ensure_placeholders(self):
-        """Installs a placeholder for every never-allowed app that isn't on the phone, so the real
-        app can't be installed."""
+
         missing = [p for p in self.status.get("install_missing", []) if p not in self.placeholder_failed]
         if not missing or self.placing or not self.agent:
             return
@@ -610,7 +590,7 @@ class AnchorWindow(Adw.ApplicationWindow):
             for pkg in missing:
                 try:
                     agent.install_placeholder(pkg)
-                except Exception as e:  # noqa: BLE001 - shown on the row
+                except Exception as e:
                     failed[pkg] = str(e)
             return failed, agent.status(token)
 
@@ -647,7 +627,7 @@ class AnchorWindow(Adw.ApplicationWindow):
 
             def work():
                 agent.uninstall_blocked(token, pkg)
-                for _ in range(40):  # the phone uninstalls in the background
+                for _ in range(40):
                     st = agent.status(token)
                     if pkg in st.get("install_missing", []):
                         return st
@@ -710,12 +690,12 @@ class AnchorWindow(Adw.ApplicationWindow):
         self.save_install_blocks(self.install_blocks + new, f"{names} added to Never allow")
 
     def uninstalls_when_never_allowed(self, pkg):
-        """On the phone, installed by the user and not anchored: adding it to Never allow uninstalls it."""
+
         row = self.rows.get(pkg)
         return bool(row and row.uninstall_button and pkg not in self.selected)
 
     def confirm_never_allow_uninstall(self, new, on_phone):
-        """Asks before uninstalling apps that are on the phone, then uninstalls them and adds them all."""
+
         one = len(on_phone) == 1
         names = on_phone[0]["name"] if one else (", ".join(a["name"] for a in on_phone[:-1])
                                                  + " and " + on_phone[-1]["name"])
@@ -738,7 +718,7 @@ class AnchorWindow(Adw.ApplicationWindow):
             def work():
                 for a in on_phone:
                     agent.uninstall_app(token, a["pkg"])
-                for _ in range(40):  # the phone uninstalls in the background
+                for _ in range(40):
                     if not any(agent.installed_package(a["pkg"]) for a in on_phone):
                         break
                     time.sleep(0.25)
@@ -771,7 +751,7 @@ class AnchorWindow(Adw.ApplicationWindow):
         content.append(entry)
         have = {a["pkg"] for a in self.install_blocks}
         options = [(p, n) for p, n in catalog.SOCIAL + catalog.SUGGESTIONS if p not in have]
-        d.picks = {}  # pkg -> (name, tick box)
+        d.picks = {}
         if options:
             label = Gtk.Label(label="Suggestions", xalign=0)
             label.add_css_class("caption-heading")
@@ -782,7 +762,7 @@ class AnchorWindow(Adw.ApplicationWindow):
                 row = Adw.ActionRow(title=name, subtitle=pkg)
                 tick = Gtk.CheckButton(valign=Gtk.Align.CENTER, tooltip_text=f"Choose {name}")
                 row.add_prefix(tick)
-                row.set_activatable_widget(tick)  # clicking the row ticks it
+                row.set_activatable_widget(tick)
                 d.picks[pkg] = (name, tick)
                 suggestions.append(row)
             scroller = Gtk.ScrolledWindow(hscrollbar_policy=Gtk.PolicyType.NEVER, max_content_height=260,
@@ -817,8 +797,7 @@ class AnchorWindow(Adw.ApplicationWindow):
         d.present(self)
 
     def build_section(self, parent, empty_text, icon):
-        """A card like Never allow: a header row (icon, title, hint, chevron) with the apps below it.
-        Clicking the header folds the apps away."""
+
         section = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         rows = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE)
         rows.add_css_class("boxed-list")
@@ -834,17 +813,17 @@ class AnchorWindow(Adw.ApplicationWindow):
         image = Gtk.Image(icon_name=icon)
         image.add_css_class("section-icon")
         header.add_prefix(image)
-        # Same as Never allow (an Adw.ExpanderRow): down while open, up while folded.
+
         chevron = Gtk.Image(icon_name="pan-down-symbolic")
         chevron.add_css_class("dim-label")
         header.add_suffix(chevron)
-        header.is_header, header.sort_key = True, ""  # always first, never filtered out
+        header.is_header, header.sort_key = True, ""
         rows.append(header)
         rows.is_open = True
 
         def set_open(is_open):
             rows.is_open = is_open
-            # Folded: the header is the whole card, so drop its separator and round its bottom.
+
             (rows.remove_css_class if is_open else rows.add_css_class)("folded")
             chevron.set_from_icon_name("pan-down-symbolic" if is_open else "pan-up-symbolic")
             rows.invalidate_filter()
@@ -870,15 +849,12 @@ class AnchorWindow(Adw.ApplicationWindow):
             action.connect("activate", handler)
             self.add_action(action)
 
-    # ---- Navigation ------------------------------------------------------------------
-
     def show_page(self, name):
         self.stack.set_visible_child_name(name)
         self.lookup_action("remove").set_enabled(name in ("main", "setup", "foreign", "limit") and self.agent is not None)
 
     def toast(self, text, timeout=3):
-        # One message at a time, like the Windows app: libadwaita queues toasts, so releasing a few
-        # apps in a row kept showing old messages for half a minute.
+
         if getattr(self, "current_toast", None):
             self.current_toast.dismiss()
         t = Adw.Toast.new(text)
@@ -889,8 +865,7 @@ class AnchorWindow(Adw.ApplicationWindow):
     def error_dialog(self, title, body, details=""):
         d = Adw.AlertDialog.new(title, body)
         if details:
-            # Raw adb output can be a long Java stack trace: wrap it anywhere and scroll it, so it
-            # never stretches the dialog past the window.
+
             expander = Gtk.Expander(label="Details")
             text = Gtk.Label(label=details, selectable=True, wrap=True, xalign=0, yalign=0,
                              wrap_mode=Pango.WrapMode.WORD_CHAR, max_width_chars=1, hexpand=True)
@@ -904,8 +879,6 @@ class AnchorWindow(Adw.ApplicationWindow):
             d.set_extra_child(expander)
         d.add_response("close", "OK")
         d.present(self)
-
-    # ---- Device polling ----------------------------------------------------------------
 
     def poll(self):
         if self.polling:
@@ -969,7 +942,7 @@ class AnchorWindow(Adw.ApplicationWindow):
             keys.claim(st)
             agent.allow_background()
             if st["selected"] and not st.get("mode"):
-                st = agent.select(token, [])  # a list left from before Anchor/Release buttons
+                st = agent.select(token, [])
             return "main", st, agent.apps()
 
         def done(result):
@@ -994,7 +967,7 @@ class AnchorWindow(Adw.ApplicationWindow):
                 self.update_never_allow()
                 self.ensure_placeholders()
                 if any(not x.get("packages") for x in st.get("schedules", [])):
-                    # Version 3 had schedules for the whole list; they're per app now.
+
                     self.save_schedules(self.schedules, "Old schedules were removed: schedules are now set per app")
             self.show_page(page)
 
@@ -1002,7 +975,7 @@ class AnchorWindow(Adw.ApplicationWindow):
             if agent is not self.agent:
                 return
             self.show_page("nophone")
-            self.device_key = None  # retry on next poll
+            self.device_key = None
             self.toast(f"Couldn't talk to the phone: {e}")
 
         in_background(work, done, fail)
@@ -1015,18 +988,16 @@ class AnchorWindow(Adw.ApplicationWindow):
         def done(st):
             if agent is not self.agent or self.working:
                 return
-            # The phone's clock changes every time; anything else changing means a real update.
+
             phone_list = set(st["selected"]) if st.get("mode") else set()
             same = phone_list == self.selected and {k: v for k, v in st.items() if k != "now"} == \
                 {k: v for k, v in self.status.items() if k != "now"}
             if same:
-                self.update_hero()  # only the countdown text can have moved on
+                self.update_hero()
             else:
                 self.apply_status(st)
 
         in_background(lambda: agent.status(token), done, lambda e: None)
-
-    # ---- Setup -------------------------------------------------------------------------
 
     def update_setup_steps(self, installed, st):
         states = [installed, bool(st and st["owner"]), bool(st and st["paired"])]
@@ -1115,8 +1086,6 @@ class AnchorWindow(Adw.ApplicationWindow):
         d.connect("response", response)
         d.present(self)
 
-    # ---- Main page ---------------------------------------------------------------------
-
     def populate_apps(self, apps, icons):
         self.populating = True
         for rows in (self.picked_list, self.other_list):
@@ -1125,7 +1094,7 @@ class AnchorWindow(Adw.ApplicationWindow):
         self.rows = {}
         self.icons = icons
         self.installed = {a["pkg"] for a in apps}
-        # Same kind of button, same width, so each kind lines up in a column.
+
         self.uninstall_group = Gtk.SizeGroup(mode=Gtk.SizeGroupMode.HORIZONTAL)
         self.anchor_group = Gtk.SizeGroup(mode=Gtk.SizeGroupMode.HORIZONTAL)
         labels = {a["pkg"]: a["label"] for a in apps}
@@ -1137,7 +1106,7 @@ class AnchorWindow(Adw.ApplicationWindow):
             row.set_title_lines(1)
             row.set_subtitle_lines(1)
             row.add_prefix(self.app_image(app["pkg"], app["label"]))
-            # Left to right: Uninstall, schedule, Anchor/Release.
+
             row.uninstall_button = None
             if self.can_uninstall(app):
                 uninstall = Gtk.Button(label="Uninstall", valign=Gtk.Align.CENTER,
@@ -1147,7 +1116,7 @@ class AnchorWindow(Adw.ApplicationWindow):
                 row.uninstall_button = uninstall
                 slot = uninstall
             else:
-                slot = Gtk.Box()  # keeps the columns lined up for apps that can't be uninstalled
+                slot = Gtk.Box()
             self.uninstall_group.add_widget(slot)
             row.add_suffix(slot)
             sched_button = Gtk.Button(icon_name="alarm-symbolic", valign=Gtk.Align.CENTER,
@@ -1163,7 +1132,7 @@ class AnchorWindow(Adw.ApplicationWindow):
             anchor_button.connect("clicked", lambda _b, pkg=app["pkg"]: self.on_anchor_clicked(pkg))
             row.add_suffix(anchor_button)
             row.anchor_button = anchor_button
-            # Clicking the row (not its buttons) opens the app's details; it doesn't anchor or release.
+
             row.set_activatable(True)
             row.connect("activated", lambda _r, a=app: self.open_app_details(a))
             row.pkg = app["pkg"]
@@ -1175,10 +1144,10 @@ class AnchorWindow(Adw.ApplicationWindow):
             self.rows[app["pkg"]] = row
         self.populating = False
         self.update_row_notes()
-        self.update_hero()  # section counts
+        self.update_hero()
 
     def app_image(self, pkg, label):
-        """The app's real icon when the phone sent one, else a round avatar with its initial."""
+
         png = self.icons.get(pkg)
         if png:
             image = Gtk.Image.new_from_paintable(Gdk.Texture.new_from_bytes(GLib.Bytes.new(png)))
@@ -1201,7 +1170,7 @@ class AnchorWindow(Adw.ApplicationWindow):
         return self.picked_list if pkg in self.selected else self.other_list
 
     def place_rows(self):
-        """Moves each row into the section that matches its switch."""
+
         for pkg, row in self.rows.items():
             target = self.list_for(pkg)
             if row.get_parent() is not target:
@@ -1220,13 +1189,12 @@ class AnchorWindow(Adw.ApplicationWindow):
         searching = bool(self.search.get_text().strip())
         for rows in (self.picked_list, self.other_list):
             if searching:
-                rows.set_open(True)  # never hide matches in a folded section
+                rows.set_open(True)
             rows.placeholder_label.set_label("No apps match" if searching else rows.empty_text)
             rows.invalidate_filter()
 
     def on_anchor_clicked(self, pkg):
-        """Anchor (hide now) or Release (bring back now) one app. Apps that came with the phone ask
-        first: hiding one can stop some of the phone's features from working."""
+
         row = self.rows.get(pkg)
         if pkg in self.selected or not (row and row.system):
             self.toggle_anchor(pkg)
@@ -1247,11 +1215,11 @@ class AnchorWindow(Adw.ApplicationWindow):
             self.selected.discard(pkg)
         else:
             self.selected.add(pkg)
-        # Move the row after the click has finished being handled.
+
         GLib.idle_add(lambda: self.place_rows() and False)
         self.update_row_notes()
         self.update_hero()
-        if self.sync_source:  # several quick clicks are sent together
+        if self.sync_source:
             GLib.source_remove(self.sync_source)
         self.sync_source = GLib.timeout_add(250, self.sync_selection)
 
@@ -1264,10 +1232,10 @@ class AnchorWindow(Adw.ApplicationWindow):
 
         def work():
             if packages and mode is None:
-                return agent.shift(token, packages)  # first app anchored: start anchoring
+                return agent.shift(token, packages)
             if not packages and mode is not None:
                 agent.select(token, packages)
-                return agent.end_anchoring(token)  # last app released: stop (schedules keep running)
+                return agent.end_anchoring(token)
             return agent.select(token, packages)
 
         def done(st):
@@ -1284,7 +1252,7 @@ class AnchorWindow(Adw.ApplicationWindow):
         return False
 
     def toast_changes(self, before, after, refused):
-        """While anchored, confirms what each switch just did on the phone."""
+
         def names(pkgs):
             labels = sorted(self.rows[p].label if p in self.rows else p for p in pkgs)
             return labels[0] if len(labels) == 1 else plural(len(labels), "app")
@@ -1310,7 +1278,7 @@ class AnchorWindow(Adw.ApplicationWindow):
         self.update_never_allow()
 
     def can_uninstall(self, app):
-        """Apps you installed yourself. Apps that came with the phone can be anchored instead."""
+
         return not app.get("system") and app["pkg"] in self.installed
 
     def update_row_notes(self):
@@ -1339,7 +1307,7 @@ class AnchorWindow(Adw.ApplicationWindow):
                 note = pkg
             if pkg in blocked and removed.get(pkg) and note != "Bringing back…":
                 note += f" · {plural(removed[pkg], 'permission')} removed"
-            # Only touch what changed: setting the same text still makes GTK redraw the row.
+
             if row.get_subtitle() != note:
                 row.set_subtitle(note)
             label = "Release" if picked else "Anchor"
@@ -1396,7 +1364,7 @@ class AnchorWindow(Adw.ApplicationWindow):
         self.update_sections(anchored, n)
 
     def update_sections(self, anchored, n):
-        # The Anchored apps section only shows when something is anchored (or a search is on).
+
         self.picked_title.section.set_visible(n > 0)
         self.picked_title.set_label(f"Anchored apps ({n})")
         self.picked_hint.set_label("Hidden from your phone. Tap Release to bring one back.")
@@ -1406,7 +1374,7 @@ class AnchorWindow(Adw.ApplicationWindow):
         self.other_hint.set_label("Tap Anchor to hide an app from your phone right away.")
 
     def on_hero_clicked(self, _button):
-        """Release all: confirmed with the computer's admin password first."""
+
         if not self.selected:
             return
         self.hero_button.set_sensitive(False)
@@ -1464,8 +1432,6 @@ class AnchorWindow(Adw.ApplicationWindow):
 
         in_background(work, done, fail)
 
-    # ---- App details -------------------------------------------------------------------
-
     def open_app_details(self, app):
         pkg, label = app["pkg"], app["label"]
         d = Adw.Dialog(title=label, content_width=460, content_height=640)
@@ -1501,7 +1467,7 @@ class AnchorWindow(Adw.ApplicationWindow):
         d.uninstall = None
         row = self.rows.get(pkg)
         bottom = None
-        if row and row.uninstall_button:  # apps you installed yourself, like the Uninstall in the list
+        if row and row.uninstall_button:
             d.uninstall = Gtk.Button(label="Uninstall", halign=Gtk.Align.CENTER,
                                      tooltip_text=f"Uninstall {label} from your phone")
             d.uninstall.add_css_class("pill-small")
@@ -1510,7 +1476,7 @@ class AnchorWindow(Adw.ApplicationWindow):
             bottom = Adw.PreferencesGroup()
             bottom.add(d.uninstall)
             page.add(bottom)
-        # Until the phone answers: a spinner instead of half-empty cards; then everything at once.
+
         d.loading = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12, margin_top=48)
         d.spinner = Gtk.Spinner(spinning=True, width_request=36, height_request=36, halign=Gtk.Align.CENTER)
         d.loading.append(d.spinner)
@@ -1623,7 +1589,7 @@ class AnchorWindow(Adw.ApplicationWindow):
         def done(info):
             self.toast(f"{title}: {'allowed' if grant else 'removed'} for {d.app['label']}")
             if self.details is not d:
-                return  # the window was closed or replaced meanwhile
+                return
             d.updating = True
             self.fill_permissions(d, info)
             d.updating = False
@@ -1654,7 +1620,7 @@ class AnchorWindow(Adw.ApplicationWindow):
 
             def work():
                 agent.uninstall_app(token, pkg)
-                for _ in range(40):  # the phone uninstalls in the background
+                for _ in range(40):
                     if not agent.installed_package(pkg):
                         break
                     time.sleep(0.25)
@@ -1677,7 +1643,7 @@ class AnchorWindow(Adw.ApplicationWindow):
         d.present(self)
 
     def time_picker(self, minutes):
-        """Two spin buttons (hours, minutes). Returns (widget, read) where read() gives minutes."""
+
         box = Gtk.Box(spacing=4, halign=Gtk.Align.CENTER)
 
         def spin(value, upper):
@@ -1696,8 +1662,6 @@ class AnchorWindow(Adw.ApplicationWindow):
         for w in (hours, colon, mins):
             box.append(w)
         return box, lambda: int(hours.get_value()) * 60 + int(mins.get_value())
-
-    # ---- Schedules -----------------------------------------------------------------------
 
     def app_schedules(self, pkg):
         return [x for x in self.schedules if pkg in x.get("packages", [])]
@@ -1870,8 +1834,6 @@ class AnchorWindow(Adw.ApplicationWindow):
 
         in_background(lambda: agent.set_schedules(token, schedules), done, fail)
 
-    # ---- Menu actions --------------------------------------------------------------------
-
     def on_backup(self):
         d = Adw.AlertDialog.new(
             "Backup key",
@@ -1896,8 +1858,7 @@ class AnchorWindow(Adw.ApplicationWindow):
         d.present(self)
 
     def on_save_key_pdf(self):
-        """A printable page with the key, saved where you choose (Documents by default), so it's kept
-        even if Anchor is uninstalled from this computer."""
+
         dialog = Gtk.FileDialog(title="Save your backup key", initial_name=keysheet.FILENAME)
         docs = GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_DOCUMENTS)
         if docs:
@@ -1907,7 +1868,7 @@ class AnchorWindow(Adw.ApplicationWindow):
             try:
                 file = dlg.save_finish(result)
             except GLib.Error:
-                return  # cancelled
+                return
             self.save_key_pdf(file.get_path())
 
         dialog.save(self, None, chosen)
@@ -1916,7 +1877,7 @@ class AnchorWindow(Adw.ApplicationWindow):
         phone = self.model if self.model and self.model != "your phone" else ""
         try:
             write_key_pdf(path, keysheet.page(ac.KeyStore.format(self.keys.token), phone))
-        except Exception as e:  # noqa: BLE001 - a folder you can't write to, a full disk…
+        except Exception as e:
             self.error_dialog("Couldn't save the backup key", str(e))
             return
         self.toast(f"Backup key saved as {Path(path).name}")
@@ -1975,7 +1936,7 @@ class AnchorWindow(Adw.ApplicationWindow):
                         raise
                 agent.uninstall()
                 if device_id:
-                    self.keys.free_slot(device_id)  # free version: another phone can be set up now
+                    self.keys.free_slot(device_id)
 
             def done(_):
                 self.toast("Anchor was removed from the phone")
@@ -2010,7 +1971,7 @@ class AnchorWindow(Adw.ApplicationWindow):
 
             def work():
                 data_home = Path(GLib.get_user_data_dir())
-                if PACKAGED:  # installed from the .deb: remove the key, then the package itself
+                if PACKAGED:
                     shutil.rmtree(data_home / "anchor", ignore_errors=True)
                     if not (shutil.which("pkexec") and os.access(UNINSTALL_HELPER, os.X_OK)):
                         return "package"
@@ -2022,7 +1983,7 @@ class AnchorWindow(Adw.ApplicationWindow):
                     Path.home() / ".local" / "bin" / "anchor",
                     data_home / "applications" / f"{APP_ID}.desktop",
                     data_home / "icons" / "hicolor" / "scalable" / "apps" / f"{APP_ID}.svg",
-                    data_home / "anchor",  # the backup key and settings
+                    data_home / "anchor",
                 ]
                 for p in targets:
                     try:
@@ -2032,21 +1993,21 @@ class AnchorWindow(Adw.ApplicationWindow):
                             p.unlink()
                     except FileNotFoundError:
                         pass
-                # The polkit files are owned by root; only prompt for a password if they exist.
+
                 system_files = [p for p in (RELEASE_POLICY, RELEASE_CHECK) if os.path.exists(p)]
                 if not system_files:
                     return True
                 if not shutil.which("pkexec"):
                     return False
-                if os.access(UNINSTALL_HELPER, os.X_OK):  # worded prompt, and leaves the .deb's files alone
+                if os.access(UNINSTALL_HELPER, os.X_OK):
                     command = ["pkexec", "--disable-internal-agent", UNINSTALL_HELPER]
-                else:  # installed before the helper existed
+                else:
                     command = ["pkexec", "rm", "-f", *system_files]
                 return subprocess.run(command, timeout=300).returncode == 0
 
             def done(system_removed):
                 msg = "Anchor has been removed from this computer."
-                if system_removed == "package":  # the password prompt was cancelled or failed
+                if system_removed == "package":
                     msg = ("Your backup key was removed, but the Anchor app itself is still installed. "
                            "To remove it, run:\nsudo apt remove anchor")
                 elif not system_removed:
@@ -2068,7 +2029,7 @@ class AnchorWindow(Adw.ApplicationWindow):
         d.present(self)
 
     def on_check_updates(self):
-        """Asks GitHub, only now, whether a newer Anchor is out (the only time the app goes online)."""
+
         def done(result):
             if result == updates.CURRENT:
                 d = Adw.AlertDialog.new("You're up to date", "This is the newest version of Anchor.")
@@ -2114,12 +2075,11 @@ class AnchorWindow(Adw.ApplicationWindow):
         in_background(lambda: updates.check(UPDATE_CHANNEL), done, fail)
 
     def can_update_itself(self):
-        """Only the .deb can: it ships the helper that installs a newer one (install.sh copies can't)."""
+
         return PACKAGED and os.access(UPDATE_HELPER, os.X_OK) and bool(shutil.which("pkexec"))
 
     def install_update(self):
-        """Downloads the newest .deb, installs it after the computer's password, then restarts Anchor.
-        The key and settings in ~/.local/share/anchor aren't touched."""
+
         self.toast("Downloading the new version…", timeout=10)
 
         def work():
@@ -2129,7 +2089,7 @@ class AnchorWindow(Adw.ApplicationWindow):
 
         def done(code):
             if code == 0:
-                # Start the new version once this one has closed (only one Anchor runs at a time).
+
                 subprocess.Popen(["sh", "-c", "sleep 1; exec anchor"], start_new_session=True)
                 self.get_application().quit()
             elif code == 126:
@@ -2163,15 +2123,10 @@ class AnchorWindow(Adw.ApplicationWindow):
         about.add_link("GitHub repository", WEBSITE)
         about.present(self)
 
-
-# On X11, GTK 4 draws a menu's corners solid even with a compositor, so a rounded menu sits in a
-# square frame. Square menus fill their frame exactly; Wayland keeps the rounded ones.
 X11_CSS = "\npopover > contents { border-radius: 0; }\n"
-
 
 def is_x11(display):
     return type(display).__name__ == "X11Display"
-
 
 class AnchorApp(Adw.Application):
     def __init__(self):
@@ -2191,7 +2146,6 @@ class AnchorApp(Adw.Application):
     def do_activate(self):
         win = self.props.active_window or AnchorWindow(self)
         win.present()
-
 
 if __name__ == "__main__":
     sys.exit(AnchorApp().run(sys.argv))

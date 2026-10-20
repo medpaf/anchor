@@ -1,17 +1,10 @@
-"""The printable backup key page (Menu → Backup key… → Save as PDF…): what it says, in order.
-
-No arrows: the Linux version draws it with cairo's simple text, which has no font fallback for them.
-
-Each desktop draws it in its own way (cairo on Linux, Qt on Windows), so both say the same thing."""
-
 import socket
 from datetime import datetime
 
 FILENAME = "Anchor backup key.pdf"
 
-
 def page(key, phone="", now=None):
-    """[(style, text)], top to bottom. Styles: "title", "key", "small", "heading", "text"."""
+
     when = f"{now or datetime.now():%d %B %Y}".lstrip("0")
     computer = socket.gethostname() or "this computer"
     saved = f"Saved on {when} from {computer}" + (f", paired with {phone}" if phone else "") + "."

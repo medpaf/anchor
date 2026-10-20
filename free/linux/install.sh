@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-# Installs Anchor for the current user: app files, a launcher entry and an `anchor` command (no sudo).
-# Then, with sudo, the polkit policy that words the Release all password prompt (optional).
 
 sudo apt install adb openssl python3-gi python3-cairo gir1.2-gtk-4.0 gir1.2-adw-1
 
@@ -27,7 +25,7 @@ cp -r desktop/. "$DEST/"
 cp desktop/icons/app.anchor.Desktop.svg "$HOME/.local/share/icons/hicolor/scalable/apps/"
 
 cat > "$HOME/.local/bin/anchor" <<EOF
-#!/bin/sh
+
 exec python3 "$DEST/anchor.py" "\$@"
 EOF
 chmod +x "$HOME/.local/bin/anchor"
@@ -47,8 +45,6 @@ EOF
 update-desktop-database "$HOME/.local/share/applications" 2>/dev/null || true
 gtk-update-icon-cache -q "$HOME/.local/share/icons/hicolor" 2>/dev/null || true
 
-# Optional, needs sudo: gives the Release all password prompt its own wording. Without it the
-# prompt still works but says "Authentication is needed to run `/bin/true` as the super user".
 POLICY=/usr/share/polkit-1/actions/app.anchor.release.policy
 HELPER=/usr/libexec/anchor-release-check
 UNINSTALL=/usr/libexec/anchor-uninstall

@@ -1,8 +1,4 @@
 #!/usr/bin/env python3
-"""Anchor for Windows: block apps on your Android phone; only this computer can unblock them.
-
-The same app as the Linux one (free/linux/desktop/anchor.py), drawn with Qt instead of GTK so it
-looks and works the same on Windows. Everything that talks to the phone is shared code."""
 
 import json
 import sys
@@ -15,49 +11,45 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
-from PySide6.QtCore import QObject, QPoint, QSize, Qt, QTimer, QUrl, Signal  # noqa: E402
-from PySide6.QtGui import QAction, QColor, QDesktopServices, QFont, QIcon, QPalette  # noqa: E402
-from PySide6.QtWidgets import (QApplication, QCheckBox, QFrame, QGridLayout, QHBoxLayout, QLineEdit,  # noqa: E402
+from PySide6.QtCore import QObject, QPoint, QSize, Qt, QTimer, QUrl, Signal
+from PySide6.QtGui import QAction, QColor, QDesktopServices, QFont, QIcon, QPalette
+from PySide6.QtWidgets import (QApplication, QCheckBox, QFrame, QGridLayout, QHBoxLayout, QLineEdit,
                                QMainWindow, QMenu, QPlainTextEdit, QPushButton, QStackedWidget, QVBoxLayout,
                                QWidget)
 
-import adbclient as ac  # noqa: E402
-import catalog  # noqa: E402
-import keysheet  # noqa: E402
-import platform_support as plat  # noqa: E402
-import theme  # noqa: E402
-import updates  # noqa: E402
-import widgets as w  # noqa: E402
-from permnames import friendly  # noqa: E402
-from timetext import DAY_NAMES, clock, countdown, days_text, hours_text, plural, screen_time  # noqa: E402
+import adbclient as ac
+import catalog
+import keysheet
+import platform_support as plat
+import theme
+import updates
+import widgets as w
+from permnames import friendly
+from timetext import DAY_NAMES, clock, countdown, days_text, hours_text, plural, screen_time
 
 APP_ID = plat.APP_ID
 APK = HERE / "anchor-agent.apk"
 VERSION = "1.0"
 WINDOW_TITLE = "Anchor - Free"
 WEBSITE = "https://github.com/medpaf/anchor"
-UPDATE_CHANNEL = "windows"  # Menu → Check for updates… compares with the "windows" release
-DONATE_URL = "https://github.com/sponsors/medpaf"  # free version: Menu → Buy me a coffee
+UPDATE_CHANNEL = "windows"
+DONATE_URL = "https://github.com/sponsors/medpaf"
 POLL_MS = 2000
 
-RUNNING = set()  # background threads still at work (tests wait for these between cases)
-
+RUNNING = set()
 
 class _Bridge(QObject):
-    """Carries a callable from a worker thread to the Qt main thread."""
-    call = Signal(object)
 
+    call = Signal(object)
 
 _bridge = None
 
-
 def on_main(fn):
-    """Runs fn() on the Qt main thread, soon. Safe to call from any thread."""
+
     _bridge.call.emit(fn)
 
-
 def in_background(work, done=None, fail=None):
-    """Runs work() on a thread, then done(result) or fail(exception) on the Qt main thread."""
+
     global _bridge
     if _bridge is None:
         _bridge = _Bridge()
@@ -66,7 +58,7 @@ def in_background(work, done=None, fail=None):
     def runner():
         try:
             result = work()
-        except Exception as e:  # noqa: BLE001 - shown to the user
+        except Exception as e:
             if fail:
                 on_main(lambda err=e: fail(err))
             return
@@ -77,22 +69,17 @@ def in_background(work, done=None, fail=None):
     RUNNING.add(thread)
     thread.start()
 
-
 def system_password_check():
-    """Release all asks for this computer's password first (Windows' own dialog, or polkit)."""
+
     return plat.system_password_check()
 
-
 class PhoneLimit(Exception):
-    """Free version: this computer is already set up for a different phone."""
 
     def __init__(self, other):
         super().__init__("This computer is set up for another phone")
         self.other = other
 
-
 class StepState(QStackedWidget):
-    """A setup step's state on the right of its row: nothing, a spinner, or a check mark."""
 
     def __init__(self):
         super().__init__()
@@ -108,9 +95,7 @@ class StepState(QStackedWidget):
     def get_visible_child_name(self):
         return self.names[self.currentIndex()]
 
-
 class TimePicker(QWidget):
-    """Hours and minutes, each with arrows above and below and the mouse wheel."""
 
     def __init__(self, minutes):
         super().__init__()
@@ -149,9 +134,7 @@ class TimePicker(QWidget):
     def minutes(self):
         return self.values[0] * 60 + self.values[1]
 
-
 class AboutDialog(w.Overlay):
-    """Name and edition, description, credits and a link to the GitHub repository."""
 
     def __init__(self, window):
         super().__init__(window, 380)
@@ -180,22 +163,21 @@ class AboutDialog(w.Overlay):
     def get_website(self):
         return WEBSITE
 
-
 def write_key_pdf(path, items):
-    """Draws the backup key page (keysheet.page) as a one-page A4 PDF with Qt."""
+
     from PySide6.QtCore import QMarginsF, QRect
     from PySide6.QtGui import QPageLayout, QPageSize, QPainter, QPdfWriter
 
     writer = QPdfWriter(str(path))
     writer.setPageLayout(QPageLayout(QPageSize(QPageSize.A4), QPageLayout.Portrait, QMarginsF(0, 0, 0, 0)))
-    writer.setResolution(72)  # one unit = one point, like the Linux version
+    writer.setResolution(72)
     width, margin = 595, 64
-    styles = {  # size, bold, monospace, space before
+    styles = {
         "title": (24, True, False, 0), "key": (16, True, True, 22), "small": (10, False, False, 14),
         "heading": (13, True, False, 22), "text": (11, False, False, 8),
     }
     painter = QPainter()
-    if not painter.begin(writer):  # Qt doesn't raise when it can't write there
+    if not painter.begin(writer):
         raise OSError(f"Can't write to {path}")
     y = margin
     for style, text in items:
@@ -209,7 +191,7 @@ def write_key_pdf(path, items):
         inset = 16 if mono else 0
         area = QRect(margin + inset, y, width - 2 * margin - 2 * inset, 2000)
         box = painter.boundingRect(area, Qt.TextWordWrap, text)
-        if style == "key":  # the key on a light box, easy to read and copy
+        if style == "key":
             painter.fillRect(QRect(margin, y, width - 2 * margin, box.height() + 28), QColor("#F0EBFA"))
             y += 14
             area.moveTop(y)
@@ -218,23 +200,21 @@ def write_key_pdf(path, items):
         y += box.height() + (14 if style == "key" else 0)
     painter.end()
 
-
 class AnchorWindow(QMainWindow):
     def __init__(self, app=None):
         super().__init__()
-        # The title bar says just "Anchor" (the heading inside the window shows the version). Qt adds
-        # the app's name to any other title, which made it "Anchor - Free - Anchor".
+
         self.setWindowTitle("Anchor")
         self.setWindowIcon(QIcon(w.picture("app.anchor.Desktop.svg", 128)))
         self.resize(580, 780)
-        self.setMinimumSize(440, 480)  # Windows' Segoe UI is wider than Linux fonts: 400 scrolled sideways
+        self.setMinimumSize(440, 480)
         adb_path = ac.find_adb()
         self.adb = ac.Adb(adb_path) if adb_path else None
         self.keys = ac.KeyStore()
         self.device_key = None
         self.agent = None
         self.model = ""
-        self.device_id = None  # the connected phone's Android ID
+        self.device_id = None
         self.status = {}
         self.selected = set()
         self.rows = {}
@@ -249,7 +229,7 @@ class AnchorWindow(QMainWindow):
         self.install_blocks = []
         self.never_key = None
         self.placing = False
-        self.placeholder_failed = {}  # pkg -> why the placeholder couldn't be installed
+        self.placeholder_failed = {}
         self.sync_timer = QTimer(self, singleShot=True, interval=250)
         self.sync_timer.timeout.connect(self.sync_selection)
 
@@ -264,7 +244,7 @@ class AnchorWindow(QMainWindow):
 
     @property
     def sync_source(self):
-        """The pending selection sync, if any (several quick clicks are sent together)."""
+
         return self.sync_timer if self.sync_timer.isActive() else None
 
     def start_polling(self):
@@ -277,8 +257,7 @@ class AnchorWindow(QMainWindow):
         self.fit_hero()
 
     def fit_hero(self):
-        """On a narrow window the status card's button goes under the text, like on a phone, and
-        the rows' Uninstall buttons shrink to icons."""
+
         compact = self.width() < 540
         if compact != getattr(self, "rows_compact", False):
             self.rows_compact = compact
@@ -297,8 +276,6 @@ class AnchorWindow(QMainWindow):
     def showEvent(self, ev):
         super().showEvent(ev)
         plat.style_title_bar(int(self.winId()))
-
-    # ---- UI construction ---------------------------------------------------------------
 
     def build_ui(self):
         root = QWidget()
@@ -357,7 +334,7 @@ class AnchorWindow(QMainWindow):
         return page
 
     def build_limit_page(self):
-        # Free version: one phone per computer. Shown for a phone paired with this key that isn't that one.
+
         self.limit_page = w.StatusPage("phone", "The free version works with one phone")
         self.limit_page.extra.addWidget(
             w.button("Remove Anchor from this phone", "cta", on_click=self.on_remove), 0, Qt.AlignHCenter)
@@ -421,7 +398,6 @@ class AnchorWindow(QMainWindow):
         lay.setContentsMargins(0, 0, 0, 0)
         lay.setSpacing(18)
 
-        # Status bar: emblem, what's going on, and the one main button.
         self.hero = QFrame()
         self.hero.setObjectName("hero")
         self.hero_grid = hero = QGridLayout(self.hero)
@@ -462,8 +438,6 @@ class AnchorWindow(QMainWindow):
         self.never_children = []
         lay.addWidget(self.never_section)
 
-        # Two sections: the apps on your block list, and everything else. Anchoring or releasing an
-        # app moves it from one to the other.
         self.picked_section = w.Section("anchor", empty_text="Nothing anchored. Tap Anchor on an app below.")
         self.other_section = w.Section("grid", empty_text="No other apps")
         for s in (self.picked_section, self.other_section):
@@ -471,8 +445,6 @@ class AnchorWindow(QMainWindow):
             lay.addWidget(s)
         lay.addStretch(1)
         return w.scroller(w.Clamp(box, 600))
-
-    # ---- Never allow ---------------------------------------------------------------------
 
     def update_never_allow(self):
         st = self.status
@@ -501,7 +473,7 @@ class AnchorWindow(QMainWindow):
             elif pkg in kept:
                 row.set_subtitle("Was already on your phone, so it's not affected. Anchor it to hide it.")
             elif pkg in placeholders:
-                row.set_subtitle(pkg)  # blocked from being installed: show which package
+                row.set_subtitle(pkg)
             elif pkg in self.placeholder_failed:
                 row.set_subtitle("Can be installed, but is hidden right away (the install couldn't be blocked)")
             else:
@@ -520,8 +492,7 @@ class AnchorWindow(QMainWindow):
         self.never_children.append(add)
 
     def ensure_placeholders(self):
-        """Installs a placeholder for every never-allowed app that isn't on the phone, so the real
-        app can't be installed."""
+
         missing = [p for p in self.status.get("install_missing", []) if p not in self.placeholder_failed]
         if not missing or self.placing or not self.agent:
             return
@@ -534,7 +505,7 @@ class AnchorWindow(QMainWindow):
             for pkg in missing:
                 try:
                     agent.install_placeholder(pkg)
-                except Exception as e:  # noqa: BLE001 - shown on the row
+                except Exception as e:
                     failed[pkg] = str(e)
             return failed, agent.status(token)
 
@@ -570,7 +541,7 @@ class AnchorWindow(QMainWindow):
 
             def work():
                 agent.uninstall_blocked(token, pkg)
-                for _ in range(40):  # the phone uninstalls in the background
+                for _ in range(40):
                     st = agent.status(token)
                     if pkg in st.get("install_missing", []):
                         return st
@@ -633,12 +604,12 @@ class AnchorWindow(QMainWindow):
         self.save_install_blocks(self.install_blocks + new, f"{names} added to Never allow")
 
     def uninstalls_when_never_allowed(self, pkg):
-        """On the phone, installed by the user and not anchored: adding it to Never allow uninstalls it."""
+
         row = self.rows.get(pkg)
         return bool(row and row.uninstall_button and pkg not in self.selected)
 
     def confirm_never_allow_uninstall(self, new, on_phone):
-        """Asks before uninstalling apps that are on the phone, then uninstalls them and adds them all."""
+
         one = len(on_phone) == 1
         names = on_phone[0]["name"] if one else (", ".join(a["name"] for a in on_phone[:-1])
                                                  + " and " + on_phone[-1]["name"])
@@ -661,7 +632,7 @@ class AnchorWindow(QMainWindow):
             def work():
                 for a in on_phone:
                     agent.uninstall_app(token, a["pkg"])
-                for _ in range(40):  # the phone uninstalls in the background
+                for _ in range(40):
                     if not any(agent.installed_package(a["pkg"]) for a in on_phone):
                         break
                     time.sleep(0.25)
@@ -699,7 +670,7 @@ class AnchorWindow(QMainWindow):
         lay.addWidget(entry)
         have = {a["pkg"] for a in self.install_blocks}
         options = [(p, n) for p, n in catalog.SOCIAL + catalog.SUGGESTIONS if p not in have]
-        d.picks = {}  # pkg -> (name, tick box)
+        d.picks = {}
         if options:
             lay.addWidget(w.label("Suggestions", "captionHeading"))
             card = w.Card()
@@ -708,7 +679,7 @@ class AnchorWindow(QMainWindow):
                 tick.setToolTip(f"Choose {name}")
                 tick.setCursor(Qt.PointingHandCursor)
                 row = w.Row(name, pkg, prefix=tick, clickable=True)
-                row.activated.connect(tick.toggle)  # clicking the row ticks it
+                row.activated.connect(tick.toggle)
                 d.picks[pkg] = (name, tick)
                 card.add(row)
             area = w.scroller(card)
@@ -744,8 +715,6 @@ class AnchorWindow(QMainWindow):
         d.present(self)
         entry.setFocus()
 
-    # ---- Menu ----------------------------------------------------------------------------
-
     def install_actions(self):
         self.actions = {}
         for name, text, handler in [
@@ -770,16 +739,14 @@ class AnchorWindow(QMainWindow):
                 self.menu.addAction(self.actions[name])
 
     def open_menu(self):
-        """Opens the menu under its button, right edges lined up."""
+
         b = self.menu_button
         corner = b.mapToGlobal(b.rect().bottomRight())
         self.menu.popup(QPoint(corner.x() - self.menu.sizeHint().width(), corner.y() + 4))
 
     def activate_action(self, name, _param=None):
-        """Runs a menu action by name ("win.donate" or "donate")."""
-        self.actions[name.split(".")[-1]].trigger()
 
-    # ---- Navigation ------------------------------------------------------------------
+        self.actions[name.split(".")[-1]].trigger()
 
     def show_page(self, name):
         self.stack.setCurrentWidget(self.pages[name])
@@ -798,7 +765,7 @@ class AnchorWindow(QMainWindow):
     def error_dialog(self, title, body, details=""):
         d = w.AlertDialog(self, title, body)
         if details:
-            # Raw adb output can be a long Java stack trace: fold it away and scroll it.
+
             box = QWidget()
             lay = QVBoxLayout(box)
             lay.setContentsMargins(0, 0, 0, 0)
@@ -815,8 +782,6 @@ class AnchorWindow(QMainWindow):
         d.add_response("close", "OK")
         d.set_default_response("close")
         d.present(self)
-
-    # ---- Device polling ----------------------------------------------------------------
 
     def poll(self):
         if self.polling:
@@ -880,7 +845,7 @@ class AnchorWindow(QMainWindow):
             keys.claim(st)
             agent.allow_background()
             if st["selected"] and not st.get("mode"):
-                st = agent.select(token, [])  # a list left from before Anchor/Release buttons
+                st = agent.select(token, [])
             return "main", st, agent.apps()
 
         def done(result):
@@ -905,7 +870,7 @@ class AnchorWindow(QMainWindow):
                 self.update_never_allow()
                 self.ensure_placeholders()
                 if any(not x.get("packages") for x in st.get("schedules", [])):
-                    # Version 3 had schedules for the whole list; they're per app now.
+
                     self.save_schedules(self.schedules, "Old schedules were removed: schedules are now set per app")
             self.show_page(page)
 
@@ -913,7 +878,7 @@ class AnchorWindow(QMainWindow):
             if agent is not self.agent:
                 return
             self.show_page("nophone")
-            self.device_key = None  # retry on next poll
+            self.device_key = None
             self.toast(f"Couldn't talk to the phone: {e}")
 
         in_background(work, done, fail)
@@ -926,18 +891,16 @@ class AnchorWindow(QMainWindow):
         def done(st):
             if agent is not self.agent or self.working:
                 return
-            # The phone's clock changes every time; anything else changing means a real update.
+
             phone_list = set(st["selected"]) if st.get("mode") else set()
             same = phone_list == self.selected and {k: v for k, v in st.items() if k != "now"} == \
                 {k: v for k, v in self.status.items() if k != "now"}
             if same:
-                self.update_hero()  # only the countdown text can have moved on
+                self.update_hero()
             else:
                 self.apply_status(st)
 
         in_background(lambda: agent.status(token), done, lambda e: None)
-
-    # ---- Setup -------------------------------------------------------------------------
 
     def update_setup_steps(self, installed, st):
         states = [installed, bool(st and st["owner"]), bool(st and st["paired"])]
@@ -1026,8 +989,6 @@ class AnchorWindow(QMainWindow):
         d.connect("response", response)
         d.present(self)
 
-    # ---- Main page ---------------------------------------------------------------------
-
     def populate_apps(self, apps, icons):
         self.populating = True
         for section in (self.picked_section, self.other_section):
@@ -1041,7 +1002,7 @@ class AnchorWindow(QMainWindow):
         for app in sorted(list(apps) + missing, key=lambda a: a["label"].casefold()):
             row = w.Row(app["label"], app["pkg"], prefix=w.image(w.app_pixmap(icons.get(app["pkg"]), app["label"])),
                         clickable=True)
-            # Left to right: Uninstall, schedule, Anchor/Release. Fixed widths line each kind up.
+
             row.uninstall_button = None
             row.system = bool(app.get("system"))
             if self.can_uninstall(app):
@@ -1050,7 +1011,7 @@ class AnchorWindow(QMainWindow):
                 row.uninstall_button = uninstall
                 slot = uninstall
             else:
-                slot = QWidget()  # keeps the columns lined up for apps that can't be uninstalled
+                slot = QWidget()
             row.uninstall_slot = slot
             self.fit_uninstall(row)
             row.add_suffix(slot)
@@ -1063,7 +1024,7 @@ class AnchorWindow(QMainWindow):
             anchor_button.setFixedWidth(78)
             row.add_suffix(anchor_button)
             row.anchor_button = anchor_button
-            # Clicking the row (not its buttons) opens the app's details; it doesn't anchor or release.
+
             row.activated.connect(lambda a=app: self.open_app_details(a))
             row.pkg, row.label, row.system = app["pkg"], app["label"], bool(app.get("system"))
             row.sort_key = app["label"].casefold()
@@ -1074,10 +1035,10 @@ class AnchorWindow(QMainWindow):
         self.populating = False
         self.update_row_notes()
         self.apply_filter()
-        self.update_hero()  # section counts
+        self.update_hero()
 
     def fit_uninstall(self, row):
-        """Narrow window: Uninstall becomes a trash icon, so the app's name keeps its room."""
+
         slot, button = row.uninstall_slot, row.uninstall_button
         compact = self.width() < 540
         slot.setFixedWidth(34 if compact else 78)
@@ -1100,7 +1061,7 @@ class AnchorWindow(QMainWindow):
         return self.picked_section if pkg in self.selected else self.other_section
 
     def place_rows(self):
-        """Moves each row into the section that matches its state."""
+
         moved = False
         for pkg, row in self.rows.items():
             target = self.section_for(pkg)
@@ -1126,12 +1087,11 @@ class AnchorWindow(QMainWindow):
         if self.search.text().strip():
             for section in (self.picked_section, self.other_section):
                 if not section.is_open:
-                    section.set_open(True)  # never hide matches in a folded section
+                    section.set_open(True)
         self.apply_filter()
 
     def on_anchor_clicked(self, pkg):
-        """Anchor (hide now) or Release (bring back now) one app. Apps that came with the phone ask
-        first: hiding one can stop some of the phone's features from working."""
+
         row = self.rows.get(pkg)
         if pkg in self.selected or not (row and row.system):
             self.toggle_anchor(pkg)
@@ -1151,11 +1111,11 @@ class AnchorWindow(QMainWindow):
             self.selected.discard(pkg)
         else:
             self.selected.add(pkg)
-        # Move the row after the click has finished being handled.
+
         QTimer.singleShot(0, self.place_rows)
         self.update_row_notes()
         self.update_hero()
-        self.sync_timer.start()  # several quick clicks are sent together
+        self.sync_timer.start()
 
     def sync_selection(self):
         agent, token, packages = self.agent, self.keys.token, set(self.selected)
@@ -1165,10 +1125,10 @@ class AnchorWindow(QMainWindow):
 
         def work():
             if packages and mode is None:
-                return agent.shift(token, packages)  # first app anchored: start anchoring
+                return agent.shift(token, packages)
             if not packages and mode is not None:
                 agent.select(token, packages)
-                return agent.end_anchoring(token)  # last app released: stop (schedules keep running)
+                return agent.end_anchoring(token)
             return agent.select(token, packages)
 
         def done(st):
@@ -1184,7 +1144,7 @@ class AnchorWindow(QMainWindow):
         in_background(work, done, fail)
 
     def toast_changes(self, before, after, refused):
-        """While anchored, confirms what each button just did on the phone."""
+
         def names(pkgs):
             labels = sorted(self.rows[p].label if p in self.rows else p for p in pkgs)
             return labels[0] if len(labels) == 1 else plural(len(labels), "app")
@@ -1210,7 +1170,7 @@ class AnchorWindow(QMainWindow):
         self.update_never_allow()
 
     def can_uninstall(self, app):
-        """Apps you installed yourself. Apps that came with the phone can be anchored instead."""
+
         return not app.get("system") and app["pkg"] in self.installed
 
     def update_row_notes(self):
@@ -1238,7 +1198,7 @@ class AnchorWindow(QMainWindow):
                 note = pkg
             if pkg in blocked and removed.get(pkg) and note != "Bringing back…":
                 note += f" · {plural(removed[pkg], 'permission')} removed"
-            row.set_subtitle(note)  # only repaints when the text changed
+            row.set_subtitle(note)
             label = "Release" if picked else "Anchor"
             if row.anchor_button.text() != label:
                 row.anchor_button.setText(label)
@@ -1287,7 +1247,7 @@ class AnchorWindow(QMainWindow):
         self.update_sections(n)
 
     def update_sections(self, n):
-        # The Anchored apps section only shows when something is anchored.
+
         self.picked_section.setVisible(n > 0)
         self.picked_section.set_title(f"Anchored apps ({n})")
         self.picked_section.set_hint("Hidden from your phone. Tap Release to bring one back.")
@@ -1297,7 +1257,7 @@ class AnchorWindow(QMainWindow):
         self.other_section.set_hint("Tap Anchor to hide an app from your phone right away.")
 
     def on_hero_clicked(self):
-        """Release all: confirmed with the computer's password first."""
+
         if not self.selected:
             return
         self.hero_button.setEnabled(False)
@@ -1351,8 +1311,6 @@ class AnchorWindow(QMainWindow):
 
         in_background(work, done, fail)
 
-    # ---- App details -------------------------------------------------------------------
-
     def open_app_details(self, app):
         pkg, label = app["pkg"], app["label"]
         d = w.PanelDialog(self, label, 460, 640)
@@ -1368,11 +1326,11 @@ class AnchorWindow(QMainWindow):
         d.body.addWidget(d.perms)
         d.uninstall = None
         row = self.rows.get(pkg)
-        if row and row.uninstall_button:  # apps you installed yourself, like the Uninstall in the list
+        if row and row.uninstall_button:
             d.uninstall = w.button("Uninstall", "pill-danger", f"Uninstall {label} from your phone",
                                    lambda: (d.close_overlay(), self.on_uninstall_app(app)))
             d.body.addWidget(d.uninstall, 0, Qt.AlignHCenter)
-        # Until the phone answers: a spinner instead of half-empty cards; then everything at once.
+
         d.loading = QWidget()
         lay = QVBoxLayout(d.loading)
         lay.setContentsMargins(0, 48, 0, 0)
@@ -1441,7 +1399,7 @@ class AnchorWindow(QMainWindow):
             ("Type", "Came with the phone" if info.get("system") else "Installed by you"),
         ]:
             row = w.Row(title, value)
-            # A property: the name small and dim, the value as the main text.
+
             row.title_label.setObjectName("rowSubtitle")
             row.subtitle_label.setObjectName("rowTitle")
             row.subtitle_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
@@ -1484,7 +1442,7 @@ class AnchorWindow(QMainWindow):
         def done(info):
             self.toast(f"{title}: {'allowed' if grant else 'removed'} for {d.app['label']}")
             if self.details is not d:
-                return  # the window was closed or replaced meanwhile
+                return
             self.fill_permissions(d, info)
 
         def fail(e):
@@ -1511,7 +1469,7 @@ class AnchorWindow(QMainWindow):
 
             def work():
                 agent.uninstall_app(token, pkg)
-                for _ in range(40):  # the phone uninstalls in the background
+                for _ in range(40):
                     if not agent.installed_package(pkg):
                         break
                     time.sleep(0.25)
@@ -1532,8 +1490,6 @@ class AnchorWindow(QMainWindow):
 
         d.connect("response", response)
         d.present(self)
-
-    # ---- Schedules -----------------------------------------------------------------------
 
     def app_schedules(self, pkg):
         return [x for x in self.schedules if pkg in x.get("packages", [])]
@@ -1616,7 +1572,7 @@ class AnchorWindow(QMainWindow):
         card.add(add)
         lay.addWidget(card)
         if self.app_dialog and self.app_dialog[0].isVisible():
-            QTimer.singleShot(0, self.app_dialog[0]._place)  # the list changed size
+            QTimer.singleShot(0, self.app_dialog[0]._place)
 
     def describe(self, x):
         return f"{self.label_for(x['packages'][0])}: {days_text(x['days'])} {hours_text(x['start'], x['end'])}"
@@ -1716,8 +1672,6 @@ class AnchorWindow(QMainWindow):
 
         in_background(lambda: agent.set_schedules(token, schedules), done, fail)
 
-    # ---- Menu actions --------------------------------------------------------------------
-
     def on_backup(self):
         d = w.AlertDialog(self, "Backup key",
                           "This key is what lets a computer release your apps. Keep a copy somewhere you "
@@ -1743,8 +1697,7 @@ class AnchorWindow(QMainWindow):
         d.present(self)
 
     def on_save_key_pdf(self):
-        """A printable page with the key, saved where you choose (Documents by default), so it's kept
-        even if Anchor is uninstalled from this computer."""
+
         from PySide6.QtCore import QStandardPaths
         from PySide6.QtWidgets import QFileDialog
 
@@ -1758,7 +1711,7 @@ class AnchorWindow(QMainWindow):
         phone = self.model if self.model and self.model != "your phone" else ""
         try:
             write_key_pdf(path, keysheet.page(ac.KeyStore.format(self.keys.token), phone))
-        except Exception as e:  # noqa: BLE001 - a folder you can't write to, a full disk…
+        except Exception as e:
             self.error_dialog("Couldn't save the backup key", str(e))
             return
         self.toast(f"Backup key saved as {Path(path).name}")
@@ -1818,7 +1771,7 @@ class AnchorWindow(QMainWindow):
                         raise
                 agent.uninstall()
                 if device_id:
-                    self.keys.free_slot(device_id)  # free version: another phone can be set up now
+                    self.keys.free_slot(device_id)
 
             def done(_):
                 self.toast("Anchor was removed from the phone")
@@ -1834,7 +1787,7 @@ class AnchorWindow(QMainWindow):
         d.present(self)
 
     def on_check_updates(self):
-        """Asks GitHub, only now, whether a newer Anchor is out (the only time the app goes online)."""
+
         def done(result):
             if result == updates.CURRENT:
                 d = w.AlertDialog(self, "You're up to date", "This is the newest version of Anchor.")
@@ -1880,12 +1833,11 @@ class AnchorWindow(QMainWindow):
         in_background(lambda: updates.check(UPDATE_CHANNEL), done, fail)
 
     def can_update_itself(self):
-        """Only Anchor installed by anchor-win.exe can (not a copy run from source)."""
+
         return plat.installed_by_installer()
 
     def install_update(self):
-        """Downloads the newest anchor-win.exe, then closes Anchor while it installs silently and opens
-        the new version. The key and settings in %APPDATA%\\Anchor aren't touched."""
+
         self.toast("Downloading the new version…", timeout=10)
 
         def done(installer):
@@ -1905,7 +1857,6 @@ class AnchorWindow(QMainWindow):
     def on_about(self):
         AboutDialog(self).present(self)
 
-
 def dark_palette():
     p = QPalette()
     for role, color in [(QPalette.Window, theme.BG), (QPalette.Base, theme.CARD), (QPalette.AlternateBase, theme.CARD),
@@ -1916,7 +1867,6 @@ def dark_palette():
                         (QPalette.PlaceholderText, "#7D7394"), (QPalette.Link, theme.LILAC)]:
         p.setColor(role, QColor(color))
     return p
-
 
 def make_app(argv=None):
     plat.set_app_id()
@@ -1934,14 +1884,11 @@ def make_app(argv=None):
     app.setWindowIcon(QIcon(w.picture("app.anchor.Desktop.svg", 256)))
     return app
 
-
 def main():
     app = make_app()
     win = AnchorWindow(app)
     win.show()
     return app.exec()
 
-
 if __name__ == "__main__":
     sys.exit(main())
-

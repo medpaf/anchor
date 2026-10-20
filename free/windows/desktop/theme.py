@@ -1,10 +1,8 @@
-"""Anchor's look: deep violet-black with a violet accent, the same palette as the GTK app."""
-
 import sys
 from pathlib import Path
 
-BG = "#0D0A14"          # window
-CARD = "#16121F"        # cards and lists
+BG = "#0D0A14"
+CARD = "#16121F"
 CARD_HOVER = "#1C1628"
 DIALOG = "#1A1525"
 POPOVER = "#1E1829"
@@ -14,10 +12,10 @@ DIM = "rgba(238, 234, 247, 0.58)"
 FAINT = "rgba(238, 234, 247, 0.45)"
 BORDER = "rgba(255, 255, 255, 0.06)"
 LINE = "rgba(255, 255, 255, 0.05)"
-ACCENT = "#B39DFF"      # text and icons
+ACCENT = "#B39DFF"
 LILAC = "#C4B5FD"
 VIOLET = "#7C3AED"
-SOFT = "#E4DBFF"        # text on violet outlines
+SOFT = "#E4DBFF"
 SUCCESS = "#6EE7B7"
 ERROR = "#FCA5A5"
 
@@ -32,7 +30,6 @@ else:
     FONTS = ["Inter", "Cantarell", "Noto Sans", "sans-serif"]
     MONO = "JetBrains Mono, DejaVu Sans Mono, monospace"
 
-# The tick in ticked boxes (a path Qt's style sheets can read, also inside the packaged app)
 CHECK = (Path(__file__).resolve().parent / "icons" / "check.svg").as_posix()
 
 STYLE = f"""

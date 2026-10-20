@@ -1,5 +1,3 @@
-"""Short, friendly names for Android's runtime permissions (shown in the app details window)."""
-
 NAMES = {
     "CAMERA": "Camera",
     "RECORD_AUDIO": "Microphone",
@@ -37,9 +35,8 @@ NAMES = {
     "UWB_RANGING": "Nearby device distance",
 }
 
-
 def friendly(permission, android_label=""):
-    """(title, subtitle) for a permission: a short name, and Android's own description below it."""
+
     short = permission.rsplit(".", 1)[-1]
     title = NAMES.get(short) or short.replace("_", " ").capitalize()
     desc = android_label if android_label and android_label != permission else ""
