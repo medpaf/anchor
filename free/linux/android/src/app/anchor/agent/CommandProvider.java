@@ -37,8 +37,19 @@ import java.util.TreeMap;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
+/**
+ * The desktop app talks to the phone through this provider over adb:
+ *
+ * <pre>
+ *   adb shell content call --uri content://app.anchor.agent.cmd --method shift --arg BASE64_JSON
+ *   adb exec-out content read --uri content://app.anchor.agent.cmd/apps.zip
+ * </pre>
+ *
+ * Calls are only accepted from the adb shell (or root), never from other apps on the phone, and
+ * every command that changes anything must carry the computer's key.
+ */
 public class CommandProvider extends ContentProvider {
-    static final int VERSION = 44;
+    static final int VERSION = 49;
     private static final int SHELL_UID = 2000;
     private static final int ICON_PX = 96;
 
@@ -89,7 +100,7 @@ public class CommandProvider extends ContentProvider {
         String token = in.optString("token", "");
         switch (method) {
             case "status":
-
+                // {"edition": "free" | "pro"}: which desktop app is asking (see Edition).
                 Edition.remember(c, in.optString("edition", ""));
                 return status(c, token);
             case "pair":
@@ -104,7 +115,7 @@ public class CommandProvider extends ContentProvider {
                 Core.apply(c);
                 return status(c, token);
             case "shift":
-
+                // {"minutes": N} for a timed shift; without it the shift lasts until unshifted.
                 requireAuth(c, token);
                 if (in.has("packages")) Core.setSelected(c, strings(in.getJSONArray("packages")));
                 if (in.has("minutes")) Core.shiftFor(c, in.getInt("minutes"));
@@ -112,22 +123,22 @@ public class CommandProvider extends ContentProvider {
                 Core.apply(c);
                 return status(c, token);
             case "app_info":
-
+                // {"pkg": ...}: details and permissions for the computer's details window.
                 requireOwner(c);
                 return Permissions.info(c, in.getString("pkg"));
             case "set_permission":
-
+                // {"pkg", "permission", "grant": true/false}
                 requireAuth(c, token);
                 Permissions.set(c, in.getString("pkg"), in.getString("permission"), in.getBoolean("grant"));
                 return Permissions.info(c, in.getString("pkg"));
             case "end":
-
+                // The last anchored app was released: stop anchoring, leave schedules alone.
                 requireAuth(c, token);
                 Core.endShift(c);
                 Core.apply(c);
                 return status(c, token);
             case "uninstall":
-
+                // {"pkg": ...}: the user clicked Uninstall on the computer.
                 requireAuth(c, token);
                 Core.uninstallApp(c, in.getString("pkg"));
                 return status(c, token);
@@ -142,33 +153,51 @@ public class CommandProvider extends ContentProvider {
                 Core.apply(c);
                 return status(c, token);
             case "install_blocks":
-
+                // {"apps": [{"pkg": "com.instagram.android", "name": "Instagram"}, ...]}: the full list.
                 requireAuth(c, token);
                 InstallBlocks.set(c, in.getJSONArray("apps"));
                 Core.apply(c);
                 return status(c, token);
             case "check":
-
+                // Re-apply right away (e.g. after the computer installed a placeholder). Harmless:
+                // it can only enforce blocks, never lift them, so it needs no key.
                 requireOwner(c);
                 InstallBlocks.check(c);
                 return status(c, token);
             case "uninstall_blocked":
-
+                // {"pkg": ...}: the user asked to remove a blocked app that got installed.
                 requireAuth(c, token);
                 InstallBlocks.uninstallCaught(c, in.getString("pkg"));
                 return status(c, token);
             case "private_dns_unlock":
-
+                // Pro: just before the computer writes the phone's Private DNS setting over USB.
                 requireAuth(c, token);
                 PrivateDns.unlock(c);
                 return status(c, token);
             case "private_dns_lock":
-
+                // Pro: {"host": "family.cloudflare-dns.com"} once written, or {"host": null} for the
+                // phone's own setting (unlocked).
                 requireAuth(c, token);
                 PrivateDns.lock(c, in.isNull("host") ? null : in.getString("host"));
                 return status(c, token);
+            case "offline_lock":
+                // Pro: {"on": true/false} turns Offline internet on or off (a locked always-on
+                // drop-all VPN, so no app reaches the internet over any transport).
+                requireAuth(c, token);
+                Network.setOffline(c, in.getBoolean("on"));
+                return status(c, token);
+            case "block_wifi":
+                // Pro: {"on": true/false} blocks the phone from joining any Wi-Fi network (Android 13+).
+                requireAuth(c, token);
+                Network.setNoWifi(c, in.getBoolean("on"));
+                return status(c, token);
+            case "set_mode":
+                requireAuth(c, token);
+                Core.setModeLabel(c, in.isNull("name") ? null : in.getString("name"));
+                return status(c, token);
             case "factory_reset_lock":
-
+                // Pro: {"locked": true} greys out "Erase all data" in the phone's Settings. Recovery mode
+                // (the phone's buttons at start-up) can't be blocked by any app and still works.
                 requireAuth(c, token);
                 Core.lockFactoryReset(c, in.getBoolean("locked"));
                 return status(c, token);
@@ -209,13 +238,14 @@ public class CommandProvider extends ContentProvider {
                 .put("permissions_removed", new JSONObject(Permissions.counts(c)))
                 .put("private_dns", PrivateDns.status(c))
                 .put("factory_reset_locked", Core.factoryResetLocked(c))
+                .put("network", Network.status(c))
 
                 .put("edition", Edition.get(c))
                 .put("exact_alarms", Core.canWakeExactly(c))
                 .put("version", VERSION)
                 .put("model", Build.MANUFACTURER + " " + Build.MODEL)
                 .put("android", Build.VERSION.RELEASE)
-
+                // Free version: lets the computer stay with one phone. Changes only on a factory reset.
                 .put("device_id", Settings.Secure.getString(c.getContentResolver(), Settings.Secure.ANDROID_ID))
                 .put("owner", Core.isOwner(c))
                 .put("paired", Core.isPaired(c))
@@ -227,6 +257,7 @@ public class CommandProvider extends ContentProvider {
                 .put("failed", new JSONArray(Core.failed(c)));
     }
 
+    /** Hidden apps, leaving out Anchor's own placeholders (they're reported separately). */
     private static Set<String> visibleBlocked(Context c) {
         Set<String> out = new java.util.TreeSet<>(Core.blocked(c));
         out.removeAll(InstallBlocks.placeholders(c));
@@ -238,6 +269,8 @@ public class CommandProvider extends ContentProvider {
         for (int i = 0; i < a.length(); i++) l.add(a.getString(i));
         return l;
     }
+
+    // ---- App list (apps.json + icons/<package>.png in a zip, streamed over a pipe) ---------
 
     @Override
     public ParcelFileDescriptor openFile(Uri uri, String mode) throws FileNotFoundException {
@@ -256,7 +289,7 @@ public class CommandProvider extends ContentProvider {
                 try (OutputStream os = new ParcelFileDescriptor.AutoCloseOutputStream(pipe[1])) {
                     writeApps(c, os);
                 } catch (IOException | JSONException ignored) {
-
+                    // Reader went away; nothing to do.
                 }
             }
         }, "anchor-apps").start();
@@ -271,7 +304,7 @@ public class CommandProvider extends ContentProvider {
             ApplicationInfo ai = ri.activityInfo.applicationInfo;
             if (!ai.packageName.equals(c.getPackageName())) apps.put(ai.packageName, ai);
         }
-
+        // Hidden (blocked) apps have no launcher entry; keep every selected app listed.
         addInstalled(c, pm, apps, Core.selected(c));
 
         ZipOutputStream zip = new ZipOutputStream(os);
@@ -287,7 +320,7 @@ public class CommandProvider extends ContentProvider {
                 bmp.compress(Bitmap.CompressFormat.PNG, 100, zip);
                 zip.closeEntry();
             } catch (RuntimeException ignored) {
-
+                // Missing icon is fine.
             }
         }
         zip.putNextEntry(new ZipEntry("apps.json"));
@@ -315,6 +348,8 @@ public class CommandProvider extends ContentProvider {
         d.draw(canvas);
         return b;
     }
+
+    // ---- Unused ContentProvider surface ---------------------------------------------------
 
     @Override
     public Cursor query(Uri uri, String[] projection, String selection, String[] selectionArgs, String sortOrder) {

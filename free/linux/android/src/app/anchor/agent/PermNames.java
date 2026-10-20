@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 
+/** Short, friendly names for Android's runtime permissions, the same as the desktop's permnames.py. */
 final class PermNames {
     private static final Map<String, String> NAMES = new HashMap<>();
 
@@ -50,6 +51,7 @@ final class PermNames {
     private PermNames() {
     }
 
+    /** {title, subtitle}: a short name, and Android's own description below it (empty if it says the same). */
     static String[] friendly(String permission, String androidLabel) {
         String shortName = permission.substring(permission.lastIndexOf('.') + 1);
         String title = NAMES.get(shortName);

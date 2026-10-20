@@ -6,6 +6,11 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+/**
+ * Plain-JDK tests for Timing (no Android needed). Run with tests/run_tests.sh, or:
+ *   javac -d /tmp/t android/src/app/anchor/agent/Timing.java android/test/TimingTest.java
+ *   java -cp /tmp/t app.anchor.agent.TimingTest
+ */
 public final class TimingTest {
     private static final ZoneId LISBON = ZoneId.of("Europe/Lisbon");
     private static final int[] EVERY_DAY = {1, 2, 3, 4, 5, 6, 7};
@@ -28,6 +33,7 @@ public final class TimingTest {
         if (failed > 0) System.exit(1);
     }
 
+    // 2026-10-19 is a Monday.
     private static long at(String isoLocal) {
         return LocalDateTime.parse(isoLocal).atZone(LISBON).toInstant().toEpochMilli();
     }
@@ -93,7 +99,7 @@ public final class TimingTest {
     }
 
     private static void daylightSavingKeepsWallClockTimes() {
-
+        // Portugal leaves summer time on 2026-10-25 at 02:00 (clocks go back an hour).
         List<Timing.Schedule> s = Collections.singletonList(sched("Night", EVERY_DAY, "22:30", "07:00"));
         Timing.Window w = Timing.active(s, at("2026-10-25T01:00"), LISBON);
         check("DST night still ends at 07:00 local", w != null && w.end == at("2026-10-25T07:00"));

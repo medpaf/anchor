@@ -25,6 +25,24 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.regex.Pattern;
 
+/**
+ * The "Never allow" list: apps that can't be used on this phone until the computer releases them.
+ *
+ * <p>To stop the install itself, the computer installs a tiny "placeholder" app under each
+ * never-allowed app's package name (signed with a different key). Android then refuses to install
+ * the real app over it. Anchor keeps placeholders hidden and un-uninstallable, and removes them
+ * when the app is released.
+ *
+ * <p>If the real app gets installed anyway (no placeholder yet), it's hidden and suspended right
+ * away, exactly like an anchored app. Anchor never uninstalls a real app unless the user asks for
+ * it on the computer. Apps that were already installed when they were added
+ * to the list are left alone ("kept"); if one of those is uninstalled later, installing it again is
+ * blocked too.
+ *
+ * <p>New installs are noticed instantly while Anchor's process is running (see {@link AnchorApp}),
+ * and otherwise by a check every minute. The same check also catches an anchored or scheduled
+ * app that gets installed while it's anchored.
+ */
 final class InstallBlocks {
     static final String ACTION_CHECK = "app.anchor.agent.CHECK_INSTALLS";
     private static final String PREFS = "anchor";
@@ -45,6 +63,7 @@ final class InstallBlocks {
         return c.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
     }
 
+    /** [{pkg, name}] */
     static JSONArray list(Context c) {
         try {
             return new JSONArray(prefs(c).getString(KEY_LIST, "[]"));
@@ -63,6 +82,7 @@ final class InstallBlocks {
         return out;
     }
 
+    /** Whether the computer has ever sent a list (so it knows when to fill in the defaults). */
     static boolean isSet(Context c) {
         return prefs(c).getBoolean(KEY_SET, false);
     }
@@ -71,6 +91,7 @@ final class InstallBlocks {
         return new TreeSet<>(prefs(c).getStringSet(KEY_KEPT, Collections.<String>emptySet()));
     }
 
+    /** Replaces the list. Apps installed right now that weren't on the list before are kept. */
     static void set(Context c, JSONArray apps) throws JSONException {
         Map<String, String> next = new TreeMap<>();
         for (int i = 0; i < apps.length(); i++) {
@@ -94,6 +115,7 @@ final class InstallBlocks {
                 .putStringSet(KEY_KEPT, kept).commit();
     }
 
+    /** True for Anchor's own placeholder apps (they carry a marker in their manifest). */
     static boolean isPlaceholder(Context c, String pkg) {
         try {
             ApplicationInfo ai = c.getPackageManager().getApplicationInfo(pkg,
@@ -105,18 +127,24 @@ final class InstallBlocks {
         }
     }
 
+    /** Never-allowed apps held by a placeholder: these can't be installed. */
     static Set<String> placeholders(Context c) {
         Set<String> out = new TreeSet<>();
         for (String pkg : names(c).keySet()) if (isPlaceholder(c, pkg)) out.add(pkg);
         return out;
     }
 
+    /** Never-allowed apps that aren't on the phone at all (the computer adds placeholders for these). */
     static Set<String> missing(Context c) {
         Set<String> out = new TreeSet<>();
         for (String pkg : names(c).keySet()) if (!Core.isInstalled(c, pkg)) out.add(pkg);
         return out;
     }
 
+    /**
+     * Remembers the placeholders on the list, and uninstalls the ones whose app was released.
+     * Returns the placeholders to keep hidden.
+     */
     static Set<String> syncPlaceholders(Context c) {
         Set<String> current = placeholders(c);
         Set<String> known = new TreeSet<>(prefs(c).getStringSet(KEY_PLACEHOLDERS, Collections.<String>emptySet()));
@@ -128,6 +156,7 @@ final class InstallBlocks {
         return current;
     }
 
+    /** Uninstalls an app silently (device owners can). Used only for placeholders, or on request. */
     static void uninstall(Context c, String pkg) {
         DevicePolicyManager dpm = Core.dpm(c);
         try {
@@ -142,6 +171,7 @@ final class InstallBlocks {
         c.getPackageManager().getPackageInstaller().uninstall(pkg, done.getIntentSender());
     }
 
+    /** Uninstalls a real never-allowed app that got installed, when the user asks on the computer. */
     static void uninstallCaught(Context c, String pkg) {
         if (!caught(c).contains(pkg)) throw new IllegalArgumentException(pkg + " isn't a blocked app that's installed");
         uninstall(c, pkg);
@@ -154,6 +184,10 @@ final class InstallBlocks {
                 .putStringSet(KEY_PLACEHOLDERS, Collections.<String>emptySet()).commit();
     }
 
+    /**
+     * Never-allowed apps that are installed and weren't kept: these must be hidden. Also forgets
+     * kept apps that have been uninstalled, so installing them again is caught.
+     */
     static Set<String> caught(Context c) {
         Set<String> kept = kept(c);
         Set<String> out = new TreeSet<>();
@@ -167,12 +201,18 @@ final class InstallBlocks {
         return out;
     }
 
+    /**
+     * Runs after any app install or removal, and once a minute while something is anchored,
+     * scheduled or never allowed. Re-applies blocking only when an app that should be hidden has
+     * appeared (or one has gone), so the usual check is cheap.
+     */
     static void check(Context c) {
         if (!Core.isOwner(c)) return;
         if (Core.needsApply(c)) Core.apply(c);
         else watch(c);
     }
 
+    /** Called by Core.apply with the caught apps it just hid: tells the user about new ones. */
     static void applied(Context c, Set<String> caughtAndHidden) {
         Set<String> before = new TreeSet<>(prefs(c).getStringSet(KEY_CAUGHT, Collections.<String>emptySet()));
         Set<String> fresh = new TreeSet<>(caughtAndHidden);
@@ -183,6 +223,7 @@ final class InstallBlocks {
         watch(c);
     }
 
+    /** Checks again in a minute while anything is anchored, scheduled or never allowed. */
     static void watch(Context c) {
         AlarmManager am = c.getSystemService(AlarmManager.class);
         PendingIntent pi = PendingIntent.getBroadcast(c, 1,
@@ -198,7 +239,7 @@ final class InstallBlocks {
     private static void notifyBlocked(Context c, String pkg, String name) {
         NotificationManager nm = c.getSystemService(NotificationManager.class);
         if (Build.VERSION.SDK_INT >= 33) {
-
+            // As device owner, Anchor can allow its own notifications.
             try {
                 Core.dpm(c).setPermissionGrantState(Core.admin(c), c.getPackageName(),
                         Manifest.permission.POST_NOTIFICATIONS, DevicePolicyManager.PERMISSION_GRANT_STATE_GRANTED);

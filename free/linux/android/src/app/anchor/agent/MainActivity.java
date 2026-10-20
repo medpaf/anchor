@@ -33,8 +33,14 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
+/**
+ * The phone's Anchor screen, laid out like the desktop app: a status card, a search box, and the
+ * Never allow, Anchored apps and All other apps cards. Apps can be anchored, given a schedule or
+ * uninstalled from here (all of which only block more), but never released, and a schedule can't be
+ * changed or removed here: that only works from the paired computer.
+ */
 public class MainActivity extends Activity {
-
+    // Same palette as the desktop app.
     private static final int BG = 0xFF0D0A14;
     private static final int CARD = 0xFF16121F;
     private static final int TEXT = 0xFFEEEAF7;
@@ -48,13 +54,15 @@ public class MainActivity extends Activity {
     private TextView detail;
     private EditText search;
     private LinearLayout lists;
-
+    private TextView modeBanner;
+    /** Every app row (its search text is in its tag), so the search box can filter them. */
     private final List<View> searchable = new ArrayList<>();
-
+    /** Each list's body (the part that folds), with how the user left it: folded or open. */
     private final List<Object[]> sections = new ArrayList<>();
-
+    /** Slow device-policy work (hiding, suspending, permissions) runs here, off the UI thread, so
+     *  tapping Anchor doesn't freeze the screen. One thread, so the actions stay in order. */
     private final java.util.concurrent.ExecutorService worker = java.util.concurrent.Executors.newSingleThreadExecutor();
-
+    /** The whole screen, hidden until Anchor is unlocked with a fingerprint or the phone's PIN. */
     private View screen;
     private boolean unlocked;
     private boolean prompting;
@@ -73,6 +81,7 @@ public class MainActivity extends Activity {
         root.setGravity(Gravity.CENTER_HORIZONTAL);
         root.setPadding(dp(16), dp(28), dp(16), dp(32));
 
+        // The menu, top right like the desktop's: Buy me a coffee (free version) and About.
         final ImageView menu = iconButton("ic_menu", TEXT, false, "Menu", null);
         menu.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -85,7 +94,7 @@ public class MainActivity extends Activity {
         root.addView(menu, menuLp);
 
         ImageView icon = new ImageView(this);
-
+        // Just the orb (the icon's foreground layer), like the emblem in the desktop app.
         int orb = getResources().getIdentifier("ic_fg", "drawable", getPackageName());
         icon.setImageDrawable(orb != 0 ? getDrawable(orb) : getApplicationInfo().loadIcon(getPackageManager()));
         root.addView(icon, new LinearLayout.LayoutParams(dp(132), dp(132)));
@@ -115,6 +124,15 @@ public class MainActivity extends Activity {
         dlp.leftMargin = dlp.rightMargin = dp(8);
         root.addView(detail, dlp);
 
+        modeBanner = new TextView(this);
+        modeBanner.setTextColor(TEXT);
+        modeBanner.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        modeBanner.setPadding(dp(16), dp(12), dp(16), dp(12));
+        modeBanner.setBackground(cardWithBorder(CARD, 0x0FFFFFFF, dp(14)));
+        modeBanner.setVisibility(View.GONE);
+        root.addView(modeBanner, fill(dp(16)));
+
+        // The search bar (added above the lists below).
         search = new EditText(this);
         search.setHint("Search your apps");
         search.setHintTextColor(GREY);
@@ -138,6 +156,7 @@ public class MainActivity extends Activity {
             }
         });
 
+        // Search bar above the lists, like the desktop; it filters every list.
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.HORIZONTAL);
         box.setGravity(Gravity.CENTER_VERTICAL);
@@ -155,7 +174,9 @@ public class MainActivity extends Activity {
         scroll.setBackgroundColor(BG);
         scroll.setFillViewport(true);
         scroll.addView(root);
-
+        // Android 15+ draws apps edge to edge, under the status bar. The scroll view itself keeps
+        // clear of the status and navigation bars, so the list never scrolls under them and the
+        // bars stay solid (the window's own background shows there).
         scroll.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
             @Override
             public android.view.WindowInsets onApplyWindowInsets(View v, android.view.WindowInsets insets) {
@@ -185,14 +206,14 @@ public class MainActivity extends Activity {
             refresh();
             return;
         }
-        screen.setVisibility(View.INVISIBLE);
+        screen.setVisibility(View.INVISIBLE);  // nothing shows until the fingerprint (or PIN) is checked
         if (!prompting) askToUnlock();
     }
 
     @Override
     protected void onStop() {
         super.onStop();
-        if (!prompting) unlocked = false;
+        if (!prompting) unlocked = false;  // leaving the app locks it again
     }
 
     @Override
@@ -201,6 +222,8 @@ public class MainActivity extends Activity {
         worker.shutdown();
     }
 
+    /** Runs `work` off the UI thread, then `after` back on it. Keeps the screen responsive while
+     *  Android hides, suspends and locks the apps (each call is a slow trip to the system). */
     private void inBackground(final Runnable work, final Runnable after) {
         worker.execute(new Runnable() {
             @Override
@@ -216,11 +239,13 @@ public class MainActivity extends Activity {
         });
     }
 
+    /** Without a screen lock there's no fingerprint or PIN to check, so Anchor just opens. */
     private boolean hasScreenLock() {
         android.app.KeyguardManager km = getSystemService(android.app.KeyguardManager.class);
         return km != null && km.isDeviceSecure();
     }
 
+    /** Android's own prompt: a fingerprint, or the phone's PIN, pattern or password. Cancelling closes Anchor. */
     @SuppressWarnings("deprecation")
     private void askToUnlock() {
         prompting = true;
@@ -258,6 +283,7 @@ public class MainActivity extends Activity {
         String mode = Core.mode(this, now);
         long ends = Core.shiftEnds(this, now);
 
+        // Anchored: the anchored list (while anchored) and apps hidden by their schedule right now.
         Map<String, String> anchored = new TreeMap<>();
         if (ready && mode != null) {
             for (String pkg : Core.selected(this)) {
@@ -272,6 +298,7 @@ public class MainActivity extends Activity {
             }
         }
 
+        // Status, as before: pill, title and a sentence.
         if (!ready) {
             setPill("Setup needed", GREY);
             title.setText("Almost there");
@@ -297,8 +324,18 @@ public class MainActivity extends Activity {
         lists.removeAllViews();
         searchable.clear();
         sections.clear();
+
+        boolean pro = "pro".equals(Edition.get(this));
+        String mlabel = Core.modeLabel(this);
+        if (ready && pro && mlabel != null && !mlabel.isEmpty()) {
+            modeBanner.setText("●  " + mlabel + " mode is on · set from your computer");
+            modeBanner.setVisibility(View.VISIBLE);
+        } else {
+            modeBanner.setVisibility(View.GONE);
+        }
         if (!ready) return;
 
+        // Never allow (no icons, like the desktop): the package name, unless there's something to explain.
         Set<String> kept = InstallBlocks.kept(this);
         Set<String> caught = InstallBlocks.caught(this);
         List<String[]> never = new ArrayList<>();
@@ -315,6 +352,7 @@ public class MainActivity extends Activity {
         }
         sortByName(hidden);
 
+        // All other apps: everything that could be anchored from here.
         List<String[]> others = new ArrayList<>();
         PackageManager pm = getPackageManager();
         Intent launcher = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER);
@@ -327,6 +365,7 @@ public class MainActivity extends Activity {
         }
         sortByName(others);
 
+        // Same order as the desktop. Every section but Never allow only shows when it has apps.
         addSection("Never allow", "Apps that can't be installed.", "ic_block", never, false, false);
         if (!hidden.isEmpty()) {
             addSection("Anchored apps", "Hidden from this phone. Only your computer can release them.",
@@ -336,9 +375,85 @@ public class MainActivity extends Activity {
             addSection(hidden.isEmpty() ? "Your apps" : "All other apps",
                     "Tap Anchor to hide an app from this phone right away.", "ic_grid", others, true, true);
         }
+        if (pro) addSystemSettings();
         filter();
     }
 
+    private void addSystemSettings() {
+        String dns = PrivateDns.host(this);
+        boolean reset = Core.factoryResetLocked(this);
+        boolean offline = Network.offline(this);
+        boolean noWifi = Network.noWifi(this);
+
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(4), 0, dp(4), 0);
+
+        box.addView(settingsHead("Network", true));
+        addSettingRow(box, true, "Offline",
+                "Blocks all Internet, over Wi-Fi and cellular. Uses the phone's VPN slot. If you have "
+                + "another VPN, it disconnects while this is on, and you'll need to turn it back on "
+                + "manually after you turn this off.", offline ? "On" : "Off");
+        addSettingRow(box, false, "Block Wi-Fi", "Stops the phone joining any Wi-Fi network.",
+                noWifi ? "On" : "Off");
+        addSettingRow(box, false, "Content filter (Private DNS)",
+                "Blocks whole kinds of websites in every app and browser.",
+                dns != null ? contentFilterName(dns) : "Off");
+
+        box.addView(settingsHead("Protection", false));
+        addSettingRow(box, true, "Prevent factory reset",
+                "Greys out \"Erase all data\" in the phone's Settings.", reset ? "On" : "Off");
+
+        lists.addView(box, fill(dp(14)));
+    }
+
+    private TextView settingsHead(String text, boolean firstGroup) {
+        TextView t = groupTitle(text);
+        t.setPadding(dp(4), firstGroup ? 0 : dp(18), 0, dp(4));
+        return t;
+    }
+
+    private void addSettingRow(LinearLayout box, boolean first, String label, String subtitle, String value) {
+        if (!first) box.addView(divider());
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(0, dp(13), 0, dp(13));
+        LinearLayout col = new LinearLayout(this);
+        col.setOrientation(LinearLayout.VERTICAL);
+        TextView l = new TextView(this);
+        l.setText(label);
+        l.setTextColor(TEXT);
+        l.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        col.addView(l);
+        TextView s = new TextView(this);
+        s.setText(subtitle);
+        s.setTextColor(DIM);
+        s.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        s.setLineSpacing(0, 1.2f);
+        s.setPadding(0, dp(2), 0, 0);
+        col.addView(s);
+        row.addView(col, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        TextView v = new TextView(this);
+        v.setText(value);
+        v.setTextColor("Off".equals(value) ? GREY : VIOLET);
+        v.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        v.setTypeface(Typeface.DEFAULT_BOLD);
+        LinearLayout.LayoutParams vlp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        vlp.leftMargin = dp(12);
+        row.addView(v, vlp);
+        box.addView(row);
+    }
+
+    private String contentFilterName(String host) {
+        if ("family.cloudflare-dns.com".equals(host)) return "Cloudflare Family";
+        if ("family.adguard-dns.com".equals(host)) return "AdGuard Family";
+        if ("dns.quad9.net".equals(host)) return "Quad9";
+        return "Custom filter";
+    }
+
+    /** A card like the desktop's: a header row (logo, title, hint, chevron) with the apps below it. */
     private void addSection(String name, String hint, String logo, List<String[]> rows,
                             boolean icons, boolean anchorButtons) {
         final SharedPreferences ui = getSharedPreferences("anchor_ui", MODE_PRIVATE);
@@ -385,7 +500,7 @@ public class MainActivity extends Activity {
 
         boolean folded = ui.getBoolean(key, false);
         body.setVisibility(folded ? View.GONE : View.VISIBLE);
-
+        // Same as the desktop: down while open, up while folded.
         setIcon(chevron, folded ? "ic_expand_less" : "ic_expand_more", GREY);
         header.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -406,7 +521,7 @@ public class MainActivity extends Activity {
         row.setGravity(Gravity.CENTER_VERTICAL);
         row.setPadding(dp(16), dp(10), dp(14), dp(10));
         if (withIcon) {
-
+            // Like the desktop: tapping an app shows its details and permissions.
             row.setBackground(new android.graphics.drawable.RippleDrawable(ColorStateList.valueOf(0x228B5CF6), null,
                     new android.graphics.drawable.ColorDrawable(0xFFFFFFFF)));
             row.setOnClickListener(new View.OnClickListener() {
@@ -491,6 +606,7 @@ public class MainActivity extends Activity {
         return row;
     }
 
+    /** Asks first, in Anchor's own style: anchoring from the phone can't be undone from the phone. */
     private void confirmAnchor(final String pkg, final String name) {
         String message = "It's hidden from this phone right away, and only your computer can bring it back.";
         if (cameWithPhone(pkg)) {
@@ -534,6 +650,7 @@ public class MainActivity extends Activity {
         popup.show();
     }
 
+    /** Like the desktop's About: logo, edition, what it does, who made it and a link to GitHub. */
     private void showAbout() {
         final android.app.Dialog dialog = new android.app.Dialog(this);
         LinearLayout box = dialogBox();
@@ -580,6 +697,7 @@ public class MainActivity extends Activity {
         }
     }
 
+    /** An app's details and permissions, like the desktop's details window. */
     private void showDetails(final String pkg, final String name) {
         final org.json.JSONObject info;
         try {
@@ -588,7 +706,7 @@ public class MainActivity extends Activity {
             Toast.makeText(this, "Couldn't read " + name + "'s details: " + e.getMessage(), Toast.LENGTH_LONG).show();
             return;
         }
-
+        // A full screen, not a floating card: a phone has less room than the desktop's window.
         final android.app.Dialog dialog = new android.app.Dialog(this, android.R.style.Theme_DeviceDefault_NoActionBar);
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
@@ -638,7 +756,7 @@ public class MainActivity extends Activity {
         box.addView(perms, fill(dp(8)));
         fillPermissions(perms, permsNote, pkg, name, info);
 
-        if (canUninstall(pkg)) {
+        if (canUninstall(pkg)) {  // apps you installed yourself, like the bin in the list
             Button uninstall = dangerButton("Uninstall");
             uninstall.setOnClickListener(new View.OnClickListener() {
                 @Override
@@ -666,6 +784,7 @@ public class MainActivity extends Activity {
         showFullScreen(dialog, scroll, box);
     }
 
+    /** One switch per permission; locked while the app is blocked, since its permissions are held back. */
     private void fillPermissions(final LinearLayout perms, TextView note, final String pkg, final String name,
                                  org.json.JSONObject info) {
         perms.removeAllViews();
@@ -727,7 +846,7 @@ public class MainActivity extends Activity {
                     }
                 }
             });
-
+            // A fixed-width slot at the row's right edge, so every switch lines up in one column.
             sw.setShowText(false);
             android.widget.FrameLayout slot = new android.widget.FrameLayout(this);
             android.widget.FrameLayout.LayoutParams swLp = new android.widget.FrameLayout.LayoutParams(
@@ -741,9 +860,16 @@ public class MainActivity extends Activity {
         }
     }
 
+    /**
+     * A switch drawn like the desktop's: a pill-shaped track that's visible when off too, with the knob
+     * inside it. (Android's own off track almost disappears on the dark background, so off switches
+     * looked shifted next to the on ones.)
+     */
     private void styleSwitch(android.widget.Switch sw) {
         int[][] states = {{-android.R.attr.state_enabled}, {android.R.attr.state_checked}, {}};
-
+        // The knob sits inside the track (3dp all round), so a switch takes the same space on or off:
+        // Android's own knob is bigger than its track and sticks out left or right, which made the
+        // switches look shifted from one row to the next.
         GradientDrawable knob = new GradientDrawable();
         knob.setShape(GradientDrawable.OVAL);
         knob.setSize(dp(20), dp(20));
@@ -760,6 +886,7 @@ public class MainActivity extends Activity {
         sw.setSwitchMinWidth(dp(52));
     }
 
+    /** Like the desktop's status line in the details window. */
     private String statusText(String pkg) {
         long now = System.currentTimeMillis();
         if (Core.mode(this, now) != null && Core.selected(this).contains(pkg)) return "Anchored: hidden from this phone";
@@ -769,6 +896,7 @@ public class MainActivity extends Activity {
         return "Not anchored";
     }
 
+    /** "1 h 5 min", "45 min", "Less than a minute" or "Not used", like the desktop. */
     private static String screenTime(long ms) {
         long minutes = ms / 60_000;
         if (ms <= 0) return "Not used";
@@ -781,6 +909,7 @@ public class MainActivity extends Activity {
         return ms > 0 ? android.text.format.DateFormat.getMediumDateFormat(this).format(new java.util.Date(ms)) : "—";
     }
 
+    /** A property, like the desktop's: the name small and dim, the value below it. */
     private View fact(String name, String value) {
         LinearLayout row = new LinearLayout(this);
         row.setPadding(dp(14), dp(10), dp(14), dp(10));
@@ -829,6 +958,7 @@ public class MainActivity extends Activity {
         return t;
     }
 
+    /** A question about one app: its icon on a soft violet glow, a heading, a sentence, Cancel and an action. */
     private void confirm(String pkg, String heading, String message, String action, boolean danger,
                          final Runnable onAction) {
         final android.app.Dialog dialog = new android.app.Dialog(this);
@@ -871,6 +1001,7 @@ public class MainActivity extends Activity {
         showDialog(dialog, box);
     }
 
+    /** An app's schedules: they can be looked at and added here, but changed or removed only on the computer. */
     private void showSchedules(final String pkg, final String name) {
         final android.app.Dialog dialog = new android.app.Dialog(this);
         LinearLayout box = dialogBox();
@@ -908,12 +1039,13 @@ public class MainActivity extends Activity {
         showDialog(dialog, box);
     }
 
+    /** Days and a from/to time for a new schedule, like the desktop's "Add a time". */
     private void addTime(final String pkg, final String name) {
         final android.app.Dialog dialog = new android.app.Dialog(this);
         LinearLayout box = dialogBox();
         box.addView(dialogHeading("Add a time for " + name), centered(0));
 
-        final boolean[] days = {false, true, true, true, true, true, true, true};
+        final boolean[] days = {false, true, true, true, true, true, true, true}; // 1 = Monday … 7 = Sunday
         LinearLayout dayRow = new LinearLayout(this);
         dayRow.setOrientation(LinearLayout.HORIZONTAL);
         for (int i = 1; i <= 7; i++) {
@@ -1001,6 +1133,7 @@ public class MainActivity extends Activity {
         showDialog(dialog, box);
     }
 
+    /** "From" or "To" over a big time; tapping the time opens the phone's own time picker. */
     private View timeColumn(String caption, final int[] minutes) {
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
@@ -1044,6 +1177,7 @@ public class MainActivity extends Activity {
         chip.setTextColor(on ? 0xFFFFFFFF : DIM);
     }
 
+    /** A row in a dialog's list: an icon, a title and an optional line under it. */
     private View listRow(String iconName, String titleText, String subtitle) {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
@@ -1123,6 +1257,7 @@ public class MainActivity extends Activity {
         dialog.show();
     }
 
+    /** A dialog that fills the screen, with its content kept clear of the status and navigation bars. */
     private void showFullScreen(android.app.Dialog dialog, View content, final View padded) {
         dialog.requestWindowFeature(android.view.Window.FEATURE_NO_TITLE);
         dialog.setContentView(content);
@@ -1134,7 +1269,7 @@ public class MainActivity extends Activity {
             w.setNavigationBarColor(BG);
         }
         padded.setPadding(dp(16), dp(28), dp(16), dp(24));
-
+        // Like the main screen: the scroll view keeps clear of the bars, so they stay solid.
         content.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
             @Override
             public android.view.WindowInsets onApplyWindowInsets(View v, android.view.WindowInsets insets) {
@@ -1154,6 +1289,7 @@ public class MainActivity extends Activity {
         dialog.show();
     }
 
+    /** A round icon button: violet and tinted when it has something set (like a schedule). */
     private ImageView iconButton(String iconName, int color, boolean accent, String description, final Runnable onClick) {
         ImageView b = icon(iconName, color);
         b.setPadding(dp(9), dp(9), dp(9), dp(9));
@@ -1171,6 +1307,7 @@ public class MainActivity extends Activity {
         return b;
     }
 
+    /** Violet gradient pill (main action) or a quiet outlined pill, like the desktop buttons. */
     private Button pillButton(String text, boolean primary) {
         Button b = new Button(this);
         b.setText(text);
@@ -1195,6 +1332,7 @@ public class MainActivity extends Activity {
         return b;
     }
 
+    /** Red text on a red tint, like the desktop's Uninstall. */
     private Button dangerButton(String text) {
         Button b = pillButton(text, false);
         b.setTextColor(0xFFFCA5A5);
@@ -1204,12 +1342,13 @@ public class MainActivity extends Activity {
         return b;
     }
 
+    /** Anchors one app from the phone: blocking is always allowed here, releasing never is. */
     private void anchorApp(final String pkg, final String name) {
         Set<String> selected = Core.selected(this);
         selected.add(pkg);
         Core.setSelected(this, selected);
         if (Core.mode(this, System.currentTimeMillis()) == null) Core.setShifted(this, true);
-        refresh();
+        refresh();  // the app moves to Anchored right away; the hiding itself runs in the background
         final List<String>[] refused = new List[]{Collections.<String>emptyList()};
         inBackground(new Runnable() {
             @Override
@@ -1227,6 +1366,7 @@ public class MainActivity extends Activity {
         });
     }
 
+    /** Uninstalls an app the user chose here, the same way as from the computer. */
     private void uninstallApp(final String pkg, final String name) {
         Toast.makeText(this, name + " is being uninstalled", Toast.LENGTH_SHORT).show();
         final RuntimeException[] error = new RuntimeException[1];
@@ -1246,7 +1386,7 @@ public class MainActivity extends Activity {
                     Toast.makeText(MainActivity.this, "Couldn't uninstall " + name + ": " + error[0].getMessage(),
                             Toast.LENGTH_LONG).show();
                 }
-
+                // Android uninstalls in the background: look again in a moment.
                 lists.postDelayed(new Runnable() {
                     @Override
                     public void run() {
@@ -1257,6 +1397,8 @@ public class MainActivity extends Activity {
         });
     }
 
+    /** Apps you installed yourself; apps that came with the phone can't be uninstalled. */
+    /** Apps you installed yourself. Apps that came with the phone can be anchored instead. */
     private boolean canUninstall(String pkg) {
         return Core.isInstalled(this, pkg) && !cameWithPhone(pkg) && !pkg.equals(getPackageName());
     }
@@ -1277,6 +1419,7 @@ public class MainActivity extends Activity {
         return out;
     }
 
+    /** Under an app's name, like the desktop: "Every day · 22:30–07:00", or "2 schedules". */
     private String scheduleSummary(String pkg) {
         List<Timing.Schedule> list = schedulesFor(pkg);
         if (list.size() == 1) {
@@ -1296,6 +1439,7 @@ public class MainActivity extends Activity {
         return daysText(days);
     }
 
+    /** "Every day", "Weekdays", "Weekends" or "Mon, Wed, Fri", like the desktop. */
     private static String daysText(int[] days) {
         StringBuilder key = new StringBuilder();
         for (int d : days) key.append(d);
@@ -1311,6 +1455,7 @@ public class MainActivity extends Activity {
         return hoursText(sch.start, sch.end);
     }
 
+    /** "22:30–07:00", or "all day" when start and end are the same. */
     private static String hoursText(int start, int end) {
         return start == end ? "all day" : hhmm(start) + "–" + hhmm(end);
     }
@@ -1325,13 +1470,14 @@ public class MainActivity extends Activity {
         for (View v : searchable) {
             boolean show = q.isEmpty() || String.valueOf(v.getTag()).contains(q);
             v.setVisibility(show ? View.VISIBLE : View.GONE);
-
+            // The divider above each row goes with it.
             LinearLayout parent = (LinearLayout) v.getParent();
             int i = parent.indexOfChild(v);
             if (i > 0) parent.getChildAt(i - 1).setVisibility(show ? View.VISIBLE : View.GONE);
             if (show) withMatches.add(parent);
         }
-
+        // Like the desktop: while searching, open the lists that have matches. When the search is
+        // cleared, each list goes back to how the user left it.
         SharedPreferences ui = getSharedPreferences("anchor_ui", MODE_PRIVATE);
         for (Object[] sec : sections) {
             View body = (View) sec[0];
@@ -1341,6 +1487,8 @@ public class MainActivity extends Activity {
             setIcon((ImageView) sec[1], open ? "ic_expand_more" : "ic_expand_less", GREY);
         }
     }
+
+    // ---- Small helpers ----------------------------------------------------------------------
 
     private void setPill(String text, int color) {
         pill.setText(text);
@@ -1407,6 +1555,7 @@ public class MainActivity extends Activity {
         }
     }
 
+    /** "1 app", "13 apps", "13 APPS". */
     private static String count(int n, String word) {
         boolean upper = word.equals(word.toUpperCase());
         return n + " " + word + (n == 1 ? "" : upper ? "S" : "s");

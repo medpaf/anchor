@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-
+# Builds the phone companion (anchor-agent.apk) with plain SDK tools — no Gradle needed.
+# Needs: a JDK (javac, keytool) and an Android SDK with build-tools and a platform.
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -9,6 +10,8 @@ PLATFORM="$SDK/platforms/$(ls "$SDK/platforms" | sort -V | tail -1)/android.jar"
 VERSION_CODE=$(grep -oP 'VERSION = \K[0-9]+' src/app/anchor/agent/CommandProvider.java)
 OUT=../desktop/anchor-agent.apk
 
+# The signing key must stay the same forever: Android only lets a device owner be updated by an
+# APK signed with the same key. Back up android/anchor.jks.
 KEYSTORE=anchor.jks
 if [ ! -f "$KEYSTORE" ]; then
   keytool -genkeypair -keystore "$KEYSTORE" -storepass anchorpass -keypass anchorpass \
@@ -29,6 +32,8 @@ cp build/base.apk build/unsigned.apk
 "$BT/apksigner" sign --ks "$KEYSTORE" --ks-pass pass:anchorpass --out "$OUT" build/aligned.apk
 rm -f "$OUT.idsig"
 
+# Compiled manifest template for placeholder apps (see android/placeholder/ and desktop/placeholder.py).
+# Target SDK 28 lets the desktop sign placeholders with a simple v1 (JAR) signature.
 "$BT/aapt2" link -I "$PLATFORM" --manifest placeholder/AndroidManifest.xml -o build/placeholder.apk \
   --min-sdk-version 24 --target-sdk-version 28 --version-code 1 --version-name 1
 unzip -p build/placeholder.apk AndroidManifest.xml > ../desktop/placeholder-manifest.bin

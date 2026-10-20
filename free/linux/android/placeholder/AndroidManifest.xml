@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-
+<!-- Template for the "placeholder" apps that stop never-allowed apps from being installed.
+     The desktop app copies this (compiled), swaps in the blocked app's package name, and signs it. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="app.anchor.placeholder.template">
     <application android:label="Blocked by Anchor" android:hasCode="false">

@@ -31,6 +31,19 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
+/**
+ * Blocking state and enforcement.
+ *
+ * <p>"selected" is the list of apps the user picked on the computer. While shifted, every
+ * selected app is hidden (gone from the home screen and app drawer, data kept) and suspended (it
+ * can't run or notify even if un-hidden), and its uninstall is blocked so reinstalling can't escape the
+ * suspension. Only the device owner that suspended a package can lift the suspension.
+ *
+ * <p>What's hidden at any moment: the selected apps while shifted (a manual shift, or a timed
+ * shift that hasn't run out), plus every app whose own schedule window is on right now (unless the
+ * computer paused that schedule for the rest of its window). The phone wakes itself at every
+ * start and end.
+ */
 final class Core {
     private static final String PREFS = "anchor";
     private static final String KEY_TOKEN_HASH = "token_hash";
@@ -42,7 +55,9 @@ final class Core {
     private static final String KEY_UNTIL = "until";
     private static final String KEY_PAUSED = "paused";
     private static final String KEY_SCHEDULES = "schedules";
+    private static final String KEY_MODE_LABEL = "mode_label";
 
+    /** Extra loopholes closed while shifted: a second user or guest could reinstall blocked apps. */
     private static final String[] RESTRICTIONS = {
             UserManager.DISALLOW_ADD_USER,
             UserManager.DISALLOW_USER_SWITCH,
@@ -87,11 +102,13 @@ final class Core {
         return getSet(c, KEY_FAILED);
     }
 
+    /** True when anything is hidden right now: the shift list, or an app on its schedule. */
     static boolean isShifted(Context c) {
         long now = System.currentTimeMillis();
         return mode(c, now) != null || !scheduledNow(c, now).isEmpty();
     }
 
+    /** Why the shift list is hidden: "manual", "timer", or null when it isn't. */
     static String mode(Context c, long now) {
         if (prefs(c).getBoolean(KEY_SHIFTED, false)) return "manual";
         if (timerUntil(c) > now) return "timer";
@@ -102,10 +119,12 @@ final class Core {
         return prefs(c).getLong(KEY_UNTIL, 0);
     }
 
+    /** When a timed shift ends, or 0 if the shift only ends from the computer. */
     static long shiftEnds(Context c, long now) {
         return "timer".equals(mode(c, now)) ? timerUntil(c) : 0;
     }
 
+    /** Schedules the computer paused, as schedule id -> paused until (only future ones). */
     static Map<String, Long> paused(Context c, long now) {
         Map<String, Long> out = new TreeMap<>();
         try {
@@ -120,6 +139,7 @@ final class Core {
         return out;
     }
 
+    /** Apps hidden by their own schedule right now, as package -> when that window ends. */
     static Map<String, Long> scheduledNow(Context c, long now) {
         Map<String, Long> out = new TreeMap<>();
         Map<String, Long> paused = paused(c, now);
@@ -138,6 +158,8 @@ final class Core {
     static long shiftedAt(Context c) {
         return prefs(c).getLong(KEY_SHIFTED_AT, 0);
     }
+
+    // ---- Pairing -------------------------------------------------------------------------
 
     static boolean isPaired(Context c) {
         return prefs(c).getString(KEY_TOKEN_HASH, null) != null;
@@ -170,12 +192,15 @@ final class Core {
         }
     }
 
+    // ---- Shifting ------------------------------------------------------------------------
+
     static void setSelected(Context c, Collection<String> packages) {
         Set<String> clean = new TreeSet<>(packages);
         clean.remove(c.getPackageName());
         putSet(c, KEY_SELECTED, clean);
     }
 
+    /** Manual shift (no end time). */
     static void setShifted(Context c, boolean shifted) {
         if (!shifted) {
             unshift(c);
@@ -185,6 +210,7 @@ final class Core {
                 .putLong(KEY_SHIFTED_AT, System.currentTimeMillis()).commit();
     }
 
+    /** Timed shift: ends by itself after {@code minutes}. */
     static void shiftFor(Context c, int minutes) {
         if (minutes < 1 || minutes > 7 * 24 * 60) throw new IllegalArgumentException("You can anchor for 1 minute to 7 days");
         long now = System.currentTimeMillis();
@@ -192,16 +218,22 @@ final class Core {
                 .putLong(KEY_SHIFTED_AT, now).commit();
     }
 
+    /**
+     * Stops anchoring (the last anchored app was released) without touching schedules. The anchored
+     * list is emptied: with per-app Anchor/Release buttons, "anchored" means "on the list".
+     */
     static void endShift(Context c) {
         prefs(c).edit().putBoolean(KEY_SHIFTED, false).putLong(KEY_UNTIL, 0).putLong(KEY_SHIFTED_AT, 0)
                 .putStringSet(KEY_SELECTED, Collections.<String>emptySet()).commit();
     }
 
+    /** A timed anchor that ran out: its apps come back and leave the anchored list. */
     private static void expireTimer(Context c, long now) {
         long until = timerUntil(c);
         if (until > 0 && until <= now && !prefs(c).getBoolean(KEY_SHIFTED, false)) endShift(c);
     }
 
+    /** Ends the shift, and pauses every schedule that's on right now until its window ends. */
     static void unshift(Context c) {
         long now = System.currentTimeMillis();
         Map<String, Long> paused = paused(c, now);
@@ -214,6 +246,8 @@ final class Core {
                 .putString(KEY_PAUSED, new JSONObject(paused).toString()).putLong(KEY_SHIFTED_AT, 0)
                 .putStringSet(KEY_SELECTED, Collections.<String>emptySet()).commit();
     }
+
+    // ---- Schedules -----------------------------------------------------------------------
 
     static List<Timing.Schedule> schedules(Context c) {
         try {
@@ -231,11 +265,17 @@ final class Core {
         }
     }
 
+    /** Validates and saves schedules:
+     *  [{id, name, enabled, days: [1..7], start: "22:30", end: "07:00", packages: ["com.example"]}]. */
     static void setSchedules(Context c, JSONArray json) throws JSONException {
-        parseSchedules(json);
+        parseSchedules(json); // throws on bad input, before anything is saved
         prefs(c).edit().putString(KEY_SCHEDULES, json.toString()).commit();
     }
 
+    /**
+     * Adds a schedule from the phone itself. Only adding is possible here: it can only hide an app
+     * more. Changing or removing a schedule, which would bring an app back, is up to the computer.
+     */
     static void addSchedule(Context c, String pkg, String name, int[] days, String start, String end)
             throws JSONException {
         JSONObject o = new JSONObject();
@@ -276,11 +316,16 @@ final class Core {
         return false;
     }
 
+    /**
+     * Makes the phone match the saved state: selected apps suspended while shifted, nothing
+     * suspended otherwise. Returns the selected packages Android refused to suspend.
+     */
     static synchronized List<String> apply(Context c) {
         DevicePolicyManager dpm = dpm(c);
         ComponentName admin = admin(c);
         long now = System.currentTimeMillis();
         PrivateDns.reapply(c);
+        Network.reapply(c);
         expireTimer(c, now);
         List<Timing.Schedule> schedules = schedules(c);
 
@@ -288,7 +333,7 @@ final class Core {
         Set<String> want = wanted(c, now, caught);
         want.addAll(InstallBlocks.syncPlaceholders(c));
         boolean shifted = !want.isEmpty() || mode(c, now) != null;
-
+        // While anything is on the 'Never allow' list, a second user or guest could install it there.
         boolean lockdown = shifted || !InstallBlocks.names(c).isEmpty();
         Set<String> have = blocked(c);
 
@@ -309,7 +354,7 @@ final class Core {
                     dpm.setUninstallBlocked(admin, p, false);
                 } catch (RuntimeException ignored) {
                 }
-
+                // After un-hiding: Android ignores permission changes on hidden apps.
                 Permissions.restore(c, p);
             }
         }
@@ -326,15 +371,17 @@ final class Core {
                 dpm.setUninstallBlocked(admin, p, true);
             } catch (RuntimeException ignored) {
             }
-
+            // Before hiding: Android ignores permission changes on hidden apps.
             if (!have.contains(p)) Permissions.revoke(c, p);
-
+            // Hiding removes the app from the home screen, app drawer and Settings while keeping
+            // its data. The suspension above stays as a second lock in case it gets un-hidden.
             try {
                 dpm.setApplicationHidden(admin, p, true);
             } catch (RuntimeException ignored) {
             }
         }
 
+        // Shown in the "app blocked" dialog when a suspended app is opened.
         dpm.setShortSupportMessage(admin, shifted
                 ? "Blocked by Anchor. To release it, connect this phone to your computer."
                 : null);
@@ -345,16 +392,19 @@ final class Core {
         }
 
         putSet(c, KEY_BLOCKED, nowBlocked);
-
+        // Blocked apps lose their permissions (camera, location, contacts…) until released.
         Permissions.record(c, nowBlocked);
         putSet(c, KEY_FAILED, failed);
 
+        // Timers and schedules go by the phone's clock, so lock the clock while one could matter.
         lockClock(c, timerUntil(c) > now || anyEnabled(schedules));
         scheduleWakeUp(c, now, schedules);
         Set<String> caughtHidden = new TreeSet<>(caught);
         caughtHidden.retainAll(nowBlocked);
         InstallBlocks.applied(c, caughtHidden);
 
+        // Re-check every 15 minutes while shifted (catches apps reinstalled mid-shift) or while a
+        // schedule exists (a safety net for the wake-up alarm).
         if (shifted || anyEnabled(schedules)) ReapplyJob.schedule(c);
         else ReapplyJob.cancel(c);
         return failed;
@@ -377,10 +427,11 @@ final class Core {
                 if (Build.VERSION.SDK_INT < 30) dpm.setAutoTimeRequired(admin, false);
             }
         } catch (RuntimeException ignored) {
-
+            // Best effort: some phones refuse parts of this.
         }
     }
 
+    /** Wakes the phone at the next moment the shift state could change. */
     private static void scheduleWakeUp(Context c, long now, List<Timing.Schedule> schedules) {
         long next = 0;
         List<Long> times = new ArrayList<>(paused(c, now).values());
@@ -405,6 +456,11 @@ final class Core {
         return Build.VERSION.SDK_INT < 31 || c.getSystemService(AlarmManager.class).canScheduleExactAlarms();
     }
 
+    /**
+     * Installed apps that must be hidden right now: the anchored list (while anchored), apps on
+     * their schedule, and never-allowed apps that got installed. Apps that aren't installed are
+     * skipped; if one gets installed later, InstallBlocks.check notices and hides it.
+     */
     static Set<String> wanted(Context c, long now, Set<String> caught) {
         Set<String> candidates = new TreeSet<>(scheduledNow(c, now).keySet());
         candidates.addAll(caught);
@@ -417,6 +473,7 @@ final class Core {
         return want;
     }
 
+    /** True when something that should be hidden is installed but not hidden yet (or the reverse). */
     static boolean needsApply(Context c) {
         Set<String> want = wanted(c, System.currentTimeMillis(), InstallBlocks.caught(c));
         want.addAll(InstallBlocks.placeholders(c));
@@ -426,11 +483,13 @@ final class Core {
         return !want.equals(have);
     }
 
+    /** Whether new installs need watching: anything anchored, scheduled or never allowed. */
     static boolean watchInstalls(Context c) {
         long now = System.currentTimeMillis();
         return mode(c, now) != null || anyEnabled(schedules(c)) || !InstallBlocks.names(c).isEmpty();
     }
 
+    /** Pro: blocks (or allows again) factory reset from the phone's Settings. */
     static void lockFactoryReset(Context c, boolean lock) {
         if (lock) dpm(c).addUserRestriction(admin(c), UserManager.DISALLOW_FACTORY_RESET);
         else dpm(c).clearUserRestriction(admin(c), UserManager.DISALLOW_FACTORY_RESET);
@@ -441,6 +500,16 @@ final class Core {
         return um != null && um.hasUserRestriction(UserManager.DISALLOW_FACTORY_RESET);
     }
 
+    static void setModeLabel(Context c, String label) {
+        if (label == null || label.isEmpty()) prefs(c).edit().remove(KEY_MODE_LABEL).commit();
+        else prefs(c).edit().putString(KEY_MODE_LABEL, label).commit();
+    }
+
+    static String modeLabel(Context c) {
+        return prefs(c).getString(KEY_MODE_LABEL, null);
+    }
+
+    /** Lifts every block and gives up device ownership, so Anchor can be uninstalled. */
     static void release(Context c) {
         prefs(c).edit().putString(KEY_SCHEDULES, "[]").putString(KEY_PAUSED, "{}").commit();
         InstallBlocks.clear(c);
@@ -448,6 +517,7 @@ final class Core {
         apply(c);
         lockClock(c, false);
         PrivateDns.release(c);
+        Network.release(c);
         try {
             lockFactoryReset(c, false);
         } catch (RuntimeException ignored) {
@@ -456,6 +526,7 @@ final class Core {
         dpm(c).clearDeviceOwnerApp(c.getPackageName());
     }
 
+    /** Uninstalls an app the user chose on the computer. Never system apps, Anchor or placeholders. */
     static void uninstallApp(Context c, String pkg) {
         if (pkg.equals(c.getPackageName())) throw new IllegalArgumentException("Anchor can't uninstall itself this way");
         ApplicationInfo ai;
@@ -473,7 +544,8 @@ final class Core {
 
     static boolean isInstalled(Context c, String pkg) {
         try {
-
+            // Hidden apps only show up with MATCH_UNINSTALLED_PACKAGES; check the user-installed
+            // flag so apps that were really uninstalled don't count.
             ApplicationInfo ai = c.getPackageManager()
                     .getApplicationInfo(pkg, PackageManager.MATCH_UNINSTALLED_PACKAGES);
             return (ai.flags & ApplicationInfo.FLAG_INSTALLED) != 0;
