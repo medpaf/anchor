@@ -1437,7 +1437,9 @@ class AnchorWindow(Adw.ApplicationWindow):
         pkg, label = app["pkg"], app["label"]
         d = Adw.Dialog(title=label, content_width=460, content_height=640)
         view = Adw.ToolbarView()
-        view.add_top_bar(Adw.HeaderBar())
+        hb = Adw.HeaderBar()
+        hb.set_title_widget(Adw.WindowTitle())
+        view.add_top_bar(hb)
         page = Adw.PreferencesPage()
         view.set_content(page)
         d.set_child(view)
