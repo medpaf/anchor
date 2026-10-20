@@ -58,6 +58,9 @@ public class MainActivity extends Activity {
     private final List<View> searchable = new ArrayList<>();
     /** Each list's body (the part that folds), with how the user left it: folded or open. */
     private final List<Object[]> sections = new ArrayList<>();
+    /** Slow device-policy work (hiding, suspending, permissions) runs here, off the UI thread, so
+     *  tapping Anchor doesn't freeze the screen. One thread, so the actions stay in order. */
+    private final java.util.concurrent.ExecutorService worker = java.util.concurrent.Executors.newSingleThreadExecutor();
     /** The whole screen, hidden until Anchor is unlocked with a fingerprint or the phone's PIN. */
     private View screen;
     private boolean unlocked;
@@ -202,6 +205,29 @@ public class MainActivity extends Activity {
     protected void onStop() {
         super.onStop();
         if (!prompting) unlocked = false;  // leaving the app locks it again
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        worker.shutdown();
+    }
+
+    /** Runs `work` off the UI thread, then `after` back on it. Keeps the screen responsive while
+     *  Android hides, suspends and locks the apps (each call is a slow trip to the system). */
+    private void inBackground(final Runnable work, final Runnable after) {
+        worker.execute(new Runnable() {
+            @Override
+            public void run() {
+                work.run();
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (!isFinishing() && !isDestroyed()) after.run();
+                    }
+                });
+            }
+        });
     }
 
     /** Without a screen lock there's no fingerprint or PIN to check, so Anchor just opens. */
@@ -984,18 +1010,30 @@ public class MainActivity extends Activity {
                     Toast.makeText(MainActivity.this, "Pick at least one day", Toast.LENGTH_SHORT).show();
                     return;
                 }
-                int[] picked = new int[chosen.size()];
+                final int[] picked = new int[chosen.size()];
                 for (int k = 0; k < picked.length; k++) picked[k] = chosen.get(k);
-                try {
-                    Core.addSchedule(MainActivity.this, pkg, name, picked, hhmm(start[0]), hhmm(end[0]));
-                    Core.apply(MainActivity.this);
-                    Toast.makeText(MainActivity.this, name + ": " + daysText(picked) + " "
-                            + hoursText(start[0], end[0]) + " added", Toast.LENGTH_SHORT).show();
-                } catch (Exception e) {
-                    Toast.makeText(MainActivity.this, "Couldn't add the time: " + e.getMessage(), Toast.LENGTH_LONG).show();
-                }
                 dialog.dismiss();
-                refresh();
+                final Exception[] error = new Exception[1];
+                inBackground(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            Core.addSchedule(MainActivity.this, pkg, name, picked, hhmm(start[0]), hhmm(end[0]));
+                            Core.apply(MainActivity.this);
+                        } catch (Exception e) {
+                            error[0] = e;
+                        }
+                    }
+                }, new Runnable() {
+                    @Override
+                    public void run() {
+                        Toast.makeText(MainActivity.this, error[0] == null
+                                ? name + ": " + daysText(picked) + " " + hoursText(start[0], end[0]) + " added"
+                                : "Couldn't add the time: " + error[0].getMessage(),
+                                error[0] == null ? Toast.LENGTH_SHORT : Toast.LENGTH_LONG).show();
+                        refresh();
+                    }
+                });
             }
         });
         box.addView(twoButtons(cancel, save), fill(dp(22)));
@@ -1212,33 +1250,58 @@ public class MainActivity extends Activity {
     }
 
     /** Anchors one app from the phone: blocking is always allowed here, releasing never is. */
-    private void anchorApp(String pkg, String name) {
+    private void anchorApp(final String pkg, final String name) {
         Set<String> selected = Core.selected(this);
         selected.add(pkg);
         Core.setSelected(this, selected);
         if (Core.mode(this, System.currentTimeMillis()) == null) Core.setShifted(this, true);
-        List<String> refused = Core.apply(this);
-        Toast.makeText(this, refused.contains(pkg)
-                ? name + " can't be hidden (protected by Android)"
-                : name + " anchored · only your computer can release it", Toast.LENGTH_SHORT).show();
-        refresh();
+        refresh();  // the app moves to Anchored right away; the hiding itself runs in the background
+        final List<String>[] refused = new List[]{Collections.<String>emptyList()};
+        inBackground(new Runnable() {
+            @Override
+            public void run() {
+                refused[0] = Core.apply(MainActivity.this);
+            }
+        }, new Runnable() {
+            @Override
+            public void run() {
+                Toast.makeText(MainActivity.this, refused[0].contains(pkg)
+                        ? name + " can't be hidden (protected by Android)"
+                        : name + " anchored · only your computer can release it", Toast.LENGTH_SHORT).show();
+                refresh();
+            }
+        });
     }
 
     /** Uninstalls an app the user chose here, the same way as from the computer. */
-    private void uninstallApp(String pkg, String name) {
-        try {
-            Core.uninstallApp(this, pkg);
-            Toast.makeText(this, name + " is being uninstalled", Toast.LENGTH_SHORT).show();
-        } catch (RuntimeException e) {
-            Toast.makeText(this, "Couldn't uninstall " + name + ": " + e.getMessage(), Toast.LENGTH_LONG).show();
-        }
-        // Android uninstalls in the background: look again in a moment.
-        lists.postDelayed(new Runnable() {
+    private void uninstallApp(final String pkg, final String name) {
+        Toast.makeText(this, name + " is being uninstalled", Toast.LENGTH_SHORT).show();
+        final RuntimeException[] error = new RuntimeException[1];
+        inBackground(new Runnable() {
             @Override
             public void run() {
-                refresh();
+                try {
+                    Core.uninstallApp(MainActivity.this, pkg);
+                } catch (RuntimeException e) {
+                    error[0] = e;
+                }
             }
-        }, 1500);
+        }, new Runnable() {
+            @Override
+            public void run() {
+                if (error[0] != null) {
+                    Toast.makeText(MainActivity.this, "Couldn't uninstall " + name + ": " + error[0].getMessage(),
+                            Toast.LENGTH_LONG).show();
+                }
+                // Android uninstalls in the background: look again in a moment.
+                lists.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        refresh();
+                    }
+                }, 1500);
+            }
+        });
     }
 
     /** Apps you installed yourself; apps that came with the phone can't be uninstalled. */
