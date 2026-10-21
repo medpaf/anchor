@@ -38,7 +38,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 public class CommandProvider extends ContentProvider {
-    static final int VERSION = 51;
+    static final int VERSION = 52;
     private static final int SHELL_UID = 2000;
     private static final int ICON_PX = 96;
 

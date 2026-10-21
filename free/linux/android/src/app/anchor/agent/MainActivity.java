@@ -73,8 +73,10 @@ public class MainActivity extends Activity {
         root.setOrientation(LinearLayout.VERTICAL);
         root.setGravity(Gravity.CENTER_HORIZONTAL);
         int screenW = getResources().getDisplayMetrics().widthPixels;
+        int screenH = getResources().getDisplayMetrics().heightPixels;
+        boolean compact = screenH < screenW * 3 / 2;
         int hpad = screenW > dp(592) ? (screenW - dp(560)) / 2 : dp(16);
-        root.setPadding(hpad, dp(28), hpad, dp(32));
+        root.setPadding(hpad, compact ? dp(12) : dp(28), hpad, dp(32));
 
         final ImageView menu = iconButton("ic_menu", TEXT, false, "Menu", null);
         menu.setOnClickListener(new View.OnClickListener() {
@@ -91,7 +93,8 @@ public class MainActivity extends Activity {
 
         int orb = getResources().getIdentifier("ic_fg", "drawable", getPackageName());
         icon.setImageDrawable(orb != 0 ? getDrawable(orb) : getApplicationInfo().loadIcon(getPackageManager()));
-        root.addView(icon, new LinearLayout.LayoutParams(dp(132), dp(132)));
+        int orbSize = compact ? dp(72) : dp(132);
+        root.addView(icon, new LinearLayout.LayoutParams(orbSize, orbSize));
 
         pill = new TextView(this);
         pill.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
@@ -102,7 +105,7 @@ public class MainActivity extends Activity {
         root.addView(pill, centered(dp(28)));
 
         title = new TextView(this);
-        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 32);
+        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, compact ? 25 : 32);
         title.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
         title.setTextColor(TEXT);
         title.setLetterSpacing(-0.01f);
