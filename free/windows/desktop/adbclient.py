@@ -14,7 +14,7 @@ import platform_support as plat
 AGENT_PKG = "app.anchor.agent"
 AGENT_ADMIN = f"{AGENT_PKG}/.AdminReceiver"
 AGENT_URI = "content://app.anchor.agent.cmd"
-AGENT_VERSION = 54
+AGENT_VERSION = 55
 EDITION = "free"
 
 class AdbError(Exception):

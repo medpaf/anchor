@@ -399,22 +399,95 @@ public class MainActivity extends Activity {
         box.setOrientation(LinearLayout.VERTICAL);
         box.setPadding(dp(4), 0, dp(4), 0);
 
+        boolean wifiOk = android.os.Build.VERSION.SDK_INT >= 33;
+
+        final Runnable offlineOn = new Runnable() {
+            @Override public void run() {
+                try { Network.setOffline(MainActivity.this, true); } catch (CommandProvider.AgentError e) {
+                    Toast.makeText(MainActivity.this, e.getMessage(), Toast.LENGTH_LONG).show();
+                }
+                refresh();
+            }
+        };
+        final Runnable wifiOn = new Runnable() {
+            @Override public void run() {
+                try { Network.setNoWifi(MainActivity.this, true); } catch (CommandProvider.AgentError e) {
+                    Toast.makeText(MainActivity.this, e.getMessage(), Toast.LENGTH_LONG).show();
+                }
+                refresh();
+            }
+        };
+        final Runnable resetOn = new Runnable() {
+            @Override public void run() {
+                try { Core.lockFactoryReset(MainActivity.this, true); } catch (RuntimeException ignored) { }
+                refresh();
+            }
+        };
+
         box.addView(settingsHead("Network", true));
         addSettingRow(box, true, "Offline",
                 "Blocks all Internet, over Wi-Fi and cellular. Uses the phone's VPN slot. If you have "
                 + "another VPN, it disconnects while this is on, and you'll need to turn it back on "
-                + "manually after you turn this off.", offline ? "On" : "Off");
+                + "manually after you turn this off.", offline ? "On" : "Off",
+                offline ? lockedTap("Offline") : tightenTap("Turn on Offline?",
+                        "This cuts all Internet on your phone — Wi-Fi and cellular. Only your computer "
+                        + "can turn it back off.", offlineOn));
         addSettingRow(box, false, "Block Wi-Fi", "Stops the phone joining any Wi-Fi network.",
-                noWifi ? "On" : "Off");
+                noWifi ? "On" : "Off",
+                noWifi ? lockedTap("Block Wi-Fi") : (wifiOk ? tightenTap("Turn on Block Wi-Fi?",
+                        "The phone won't join any Wi-Fi network. Only your computer can turn it back off.",
+                        wifiOn) : infoTap("Blocking Wi-Fi needs Android 13 or newer.")));
         addSettingRow(box, false, "Content filter (Private DNS)",
                 "Blocks whole kinds of websites in every app and browser.",
-                dns != null ? contentFilterName(dns) : "Off");
+                dns != null ? contentFilterName(dns) : "Off",
+                infoTap("The content filter is set from your computer."));
 
         box.addView(settingsHead("Protection", false));
         addSettingRow(box, true, "Prevent factory reset",
-                "Greys out \"Erase all data\" in the phone's Settings.", reset ? "On" : "Off");
+                "Greys out \"Erase all data\" in the phone's Settings.", reset ? "On" : "Off",
+                reset ? lockedTap("Prevent factory reset") : tightenTap("Turn on Prevent factory reset?",
+                        "Greys out \"Erase all data\" in the phone's Settings. Only your computer can turn "
+                        + "it back off.", resetOn));
 
         lists.addView(box, fill(dp(14)));
+    }
+
+    private Runnable tightenTap(final String heading, final String message, final Runnable apply) {
+        return new Runnable() {
+            @Override public void run() { confirmTighten(heading, message, apply); }
+        };
+    }
+
+    private Runnable lockedTap(final String label) {
+        return new Runnable() {
+            @Override public void run() {
+                Toast.makeText(MainActivity.this, label + " is on. Only your computer can turn it off.",
+                        Toast.LENGTH_SHORT).show();
+            }
+        };
+    }
+
+    private Runnable infoTap(final String message) {
+        return new Runnable() {
+            @Override public void run() { Toast.makeText(MainActivity.this, message, Toast.LENGTH_SHORT).show(); }
+        };
+    }
+
+    private void confirmTighten(String heading, String message, final Runnable onYes) {
+        final android.app.Dialog dialog = new android.app.Dialog(this);
+        LinearLayout box = dialogBox();
+        box.addView(dialogHeading(heading), centered(0));
+        box.addView(dialogText(message), centered(dp(8)));
+        Button cancel = pillButton("Cancel", false);
+        Button go = pillButton("Turn on", true);
+        cancel.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { dialog.dismiss(); }
+        });
+        go.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { dialog.dismiss(); onYes.run(); }
+        });
+        box.addView(twoButtons(cancel, go), fill(dp(22)));
+        showDialog(dialog, box);
     }
 
     private TextView settingsHead(String text, boolean firstGroup) {
@@ -423,12 +496,21 @@ public class MainActivity extends Activity {
         return t;
     }
 
-    private void addSettingRow(LinearLayout box, boolean first, String label, String subtitle, String value) {
+    private void addSettingRow(LinearLayout box, boolean first, String label, String subtitle, String value,
+                               final Runnable onTap) {
         if (!first) box.addView(divider());
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
         row.setPadding(dp(16), dp(13), 0, dp(13));
+        if (onTap != null) {
+            row.setClickable(true);
+            row.setBackground(new android.graphics.drawable.RippleDrawable(
+                    ColorStateList.valueOf(0x228B5CF6), null, new android.graphics.drawable.ColorDrawable(0xFFFFFFFF)));
+            row.setOnClickListener(new View.OnClickListener() {
+                @Override public void onClick(View v) { onTap.run(); }
+            });
+        }
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
         TextView l = new TextView(this);
