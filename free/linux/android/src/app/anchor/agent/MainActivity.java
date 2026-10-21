@@ -93,33 +93,58 @@ public class MainActivity extends Activity {
 
         int orb = getResources().getIdentifier("ic_fg", "drawable", getPackageName());
         icon.setImageDrawable(orb != 0 ? getDrawable(orb) : getApplicationInfo().loadIcon(getPackageManager()));
-        int orbSize = compact ? dp(72) : dp(132);
-        root.addView(icon, new LinearLayout.LayoutParams(orbSize, orbSize));
 
         pill = new TextView(this);
-        pill.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        pill.setTextSize(TypedValue.COMPLEX_UNIT_SP, compact ? 11 : 13);
         pill.setTypeface(Typeface.DEFAULT_BOLD);
         pill.setAllCaps(true);
         pill.setLetterSpacing(0.14f);
         pill.setPadding(dp(14), dp(6), dp(14), dp(6));
-        root.addView(pill, centered(dp(28)));
 
         title = new TextView(this);
-        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, compact ? 25 : 32);
+        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, compact ? 22 : 32);
         title.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
         title.setTextColor(TEXT);
         title.setLetterSpacing(-0.01f);
-        title.setGravity(Gravity.CENTER);
-        root.addView(title, centered(dp(14)));
 
         detail = new TextView(this);
-        detail.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
-        detail.setGravity(Gravity.CENTER);
-        detail.setLineSpacing(0, 1.3f);
+        detail.setTextSize(TypedValue.COMPLEX_UNIT_SP, compact ? 13 : 16);
+        detail.setLineSpacing(0, 1.25f);
         detail.setTextColor(DIM);
-        LinearLayout.LayoutParams dlp = centered(dp(12));
-        dlp.leftMargin = dlp.rightMargin = dp(8);
-        root.addView(detail, dlp);
+
+        if (compact) {
+            pill.setGravity(Gravity.START);
+            title.setGravity(Gravity.START);
+            detail.setGravity(Gravity.START);
+            LinearLayout hero = new LinearLayout(this);
+            hero.setOrientation(LinearLayout.HORIZONTAL);
+            hero.setGravity(Gravity.CENTER_VERTICAL);
+            hero.addView(icon, new LinearLayout.LayoutParams(dp(58), dp(58)));
+            LinearLayout texts = new LinearLayout(this);
+            texts.setOrientation(LinearLayout.VERTICAL);
+            LinearLayout.LayoutParams pLp = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+            pLp.bottomMargin = dp(5);
+            texts.addView(pill, pLp);
+            texts.addView(title);
+            LinearLayout.LayoutParams dLp = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+            dLp.topMargin = dp(4);
+            texts.addView(detail, dLp);
+            LinearLayout.LayoutParams tLp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+            tLp.leftMargin = dp(16);
+            hero.addView(texts, tLp);
+            root.addView(hero, fill(dp(4)));
+        } else {
+            title.setGravity(Gravity.CENTER);
+            detail.setGravity(Gravity.CENTER);
+            root.addView(icon, new LinearLayout.LayoutParams(dp(132), dp(132)));
+            root.addView(pill, centered(dp(28)));
+            root.addView(title, centered(dp(14)));
+            LinearLayout.LayoutParams dlp = centered(dp(12));
+            dlp.leftMargin = dlp.rightMargin = dp(8);
+            root.addView(detail, dlp);
+        }
 
         modeBanner = new TextView(this);
         modeBanner.setTextColor(TEXT);
