@@ -438,8 +438,8 @@ class AnchorWindow(QMainWindow):
         self.never_children = []
         lay.addWidget(self.never_section)
 
-        self.picked_section = w.Section("anchor", empty_text="Nothing anchored. Tap Anchor on an app below.")
-        self.other_section = w.Section("grid", empty_text="No other apps")
+        self.picked_section = w.Section("anchor", empty_text="Nothing anchored. Tap Anchor on an app below.", is_open=False)
+        self.other_section = w.Section("grid", empty_text="No other apps", is_open=False)
         for s in (self.picked_section, self.other_section):
             s.toggled.connect(lambda _open, s=s: self.apply_filter(s))
             lay.addWidget(s)

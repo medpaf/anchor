@@ -831,6 +831,7 @@ class AnchorWindow(Adw.ApplicationWindow):
 
         header.connect("activated", lambda *_: set_open(not rows.is_open))
         rows.set_open, rows.header = set_open, header
+        set_open(False)
         section.append(rows)
         parent.append(section)
         return _HeaderText(header, section, "title"), _HeaderText(header, section, "subtitle"), rows

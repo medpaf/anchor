@@ -53,6 +53,7 @@ public class MainActivity extends Activity {
     private final List<View> searchable = new ArrayList<>();
 
     private final List<Object[]> sections = new ArrayList<>();
+    private final java.util.Set<String> openSections = new java.util.HashSet<>();
 
     private final java.util.concurrent.ExecutorService worker = java.util.concurrent.Executors.newSingleThreadExecutor();
 
@@ -464,7 +465,6 @@ public class MainActivity extends Activity {
 
     private void addSection(String name, String hint, String logo, List<String[]> rows,
                             boolean icons, boolean anchorButtons) {
-        final SharedPreferences ui = getSharedPreferences("anchor_ui", MODE_PRIVATE);
         final String key = "folded_" + logo;
 
         LinearLayout card = new LinearLayout(this);
@@ -506,7 +506,7 @@ public class MainActivity extends Activity {
         }
         card.addView(body);
 
-        boolean folded = ui.getBoolean(key, false);
+        boolean folded = !openSections.contains(key);
         body.setVisibility(folded ? View.GONE : View.VISIBLE);
 
         setIcon(chevron, folded ? "ic_expand_less" : "ic_expand_more", GREY);
@@ -516,7 +516,8 @@ public class MainActivity extends Activity {
                 boolean nowFolded = body.getVisibility() == View.VISIBLE;
                 body.setVisibility(nowFolded ? View.GONE : View.VISIBLE);
                 setIcon(chevron, nowFolded ? "ic_expand_less" : "ic_expand_more", GREY);
-                ui.edit().putBoolean(key, nowFolded).apply();
+                if (nowFolded) openSections.remove(key);
+                else openSections.add(key);
             }
         });
         sections.add(new Object[]{body, chevron, key});
@@ -1455,10 +1456,9 @@ public class MainActivity extends Activity {
             if (show) withMatches.add(parent);
         }
 
-        SharedPreferences ui = getSharedPreferences("anchor_ui", MODE_PRIVATE);
         for (Object[] sec : sections) {
             View body = (View) sec[0];
-            boolean open = q.isEmpty() ? !ui.getBoolean((String) sec[2], false)
+            boolean open = q.isEmpty() ? openSections.contains((String) sec[2])
                     : withMatches.contains(body) || body.getVisibility() == View.VISIBLE;
             body.setVisibility(open ? View.VISIBLE : View.GONE);
             setIcon((ImageView) sec[1], open ? "ic_expand_more" : "ic_expand_less", GREY);

@@ -1038,14 +1038,16 @@ class GuiTest(unittest.TestCase):
     def test_sections_fold_and_unfold(self):
         self.open_shifted(INSTAGRAM)
         for rows in (self.win.picked_list, self.win.other_list):
-            self.assertTrue(rows.is_open, "open at first")
-            rows.header.emit("activated")
-            self.assertFalse(rows.is_open, "folded")
+            self.assertFalse(rows.is_open, "folded at first")
             apps = [r for r in self.all_rows(rows) if not getattr(r, "is_header", False)]
             self.assertTrue(apps and all(not r.get_child_visible() for r in apps), "its apps are hidden")
             self.assertTrue(rows.header.get_child_visible(), "the header stays")
             rows.header.emit("activated")
-            self.assertTrue(rows.is_open, "open again")
+            self.assertTrue(rows.is_open, "opens")
+            apps = [r for r in self.all_rows(rows) if not getattr(r, "is_header", False)]
+            self.assertTrue(apps and all(r.get_child_visible() for r in apps), "its apps show")
+            rows.header.emit("activated")
+            self.assertFalse(rows.is_open, "folded again")
 
     def all_rows(self, listbox):
         out, row = [], listbox.get_first_child()

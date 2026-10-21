@@ -1073,14 +1073,16 @@ class GuiTest(unittest.TestCase):
     def test_sections_fold_and_unfold(self):
         self.open_shifted(INSTAGRAM)
         for section in (self.win.picked_section, self.win.other_section):
-            self.assertTrue(section.is_open, "open at first")
-            self.click_header(section)
-            self.assertFalse(section.is_open, "folded")
+            self.assertFalse(section.is_open, "folded at first")
             self.assertTrue(section.rows and all(not r.isVisibleTo(section) for r in section.rows),
                             "its apps are hidden")
             self.assertTrue(section.header.isVisibleTo(section), "the header stays")
             self.click_header(section)
-            self.assertTrue(section.is_open, "open again")
+            self.assertTrue(section.is_open, "opens")
+            self.assertTrue(section.rows and all(r.isVisibleTo(section) for r in section.rows),
+                            "its apps show")
+            self.click_header(section)
+            self.assertFalse(section.is_open, "folded again")
 
     def test_sections_look_like_never_allow(self):
         self.open_shifted(INSTAGRAM)
