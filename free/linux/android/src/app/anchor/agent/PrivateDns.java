@@ -7,13 +7,6 @@ import android.os.UserManager;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-/**
- * Pro: keeps the phone on the Private DNS provider chosen on the computer, by locking the setting.
- *
- * <p>The phone app never touches the network (it has no internet permission), so the computer checks
- * the provider and writes the setting over USB. This class only unlocks the setting just before that
- * write and locks it again right after, and both need the computer's key.
- */
 final class PrivateDns {
     private static final String PREFS = "anchor_private_dns";
     private static final String KEY_HOST = "host";
@@ -25,7 +18,6 @@ final class PrivateDns {
         return c.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
     }
 
-    /** The provider the computer set, or null when the phone decides for itself. */
     static String host(Context c) {
         return prefs(c).getString(KEY_HOST, null);
     }
@@ -35,12 +27,10 @@ final class PrivateDns {
         return um != null && um.hasUserRestriction(UserManager.DISALLOW_CONFIG_PRIVATE_DNS);
     }
 
-    /** Lets the computer write the setting for a moment. */
     static void unlock(Context c) {
         Core.dpm(c).clearUserRestriction(Core.admin(c), UserManager.DISALLOW_CONFIG_PRIVATE_DNS);
     }
 
-    /** After the computer wrote the setting: remembers the provider and locks it (unlocked for null). */
     static void lock(Context c, String host) {
         prefs(c).edit().putString(KEY_HOST, host).commit();
         if (host != null) {
@@ -50,7 +40,6 @@ final class PrivateDns {
         }
     }
 
-    /** Locks again if the computer left it unlocked (say, the cable came out halfway through a change). */
     static void reapply(Context c) {
         if (host(c) != null && !locked(c)) {
             try {
@@ -60,7 +49,6 @@ final class PrivateDns {
         }
     }
 
-    /** Anchor is being removed: the phone gets its own setting back. */
     static void release(Context c) {
         prefs(c).edit().remove(KEY_HOST).commit();
         try {

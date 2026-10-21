@@ -9,23 +9,11 @@ import android.os.Build;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-/**
- * Pro: phone-wide network blocks a mode can turn on, remembered here so they survive reboots.
- *
- * <ul>
- *   <li><b>Offline internet</b> points Anchor at its own drop-all {@link Blackhole} as a locked
- *       always-on VPN, so no app reaches the internet over any transport. It fails closed.</li>
- *   <li><b>Block Wi-Fi</b> sets a Wi-Fi allowlist of one bogus network (Android 13+), so the phone
- *       can't join any real network.</li>
- * </ul>
- *
- * Both are set by the desktop over USB and need the computer's key.
- */
 final class Network {
     private static final String PREFS = "anchor_network";
     private static final String KEY_OFFLINE = "offline";
     private static final String KEY_NO_WIFI = "no_wifi";
-    // An SSID no real network uses: with an allowlist of only this, the phone can't join anything.
+
     private static final String BLOCK_SSID = "Anchor blocks all Wi-Fi";
 
     private Network() {
@@ -78,7 +66,6 @@ final class Network {
                 android.app.admin.WifiSsidPolicy.WIFI_SSID_POLICY_TYPE_ALLOWLIST, ssids));
     }
 
-    /** Re-assert both after a reboot or an app update, in case the system dropped them. */
     static void reapply(Context c) {
         try {
             if (offline(c) && !c.getPackageName().equals(Core.dpm(c).getAlwaysOnVpnPackage(Core.admin(c)))) {
@@ -92,7 +79,6 @@ final class Network {
         }
     }
 
-    /** Anchor is being removed: drop both blocks so the phone gets its network back. */
     static void release(Context c) {
         try {
             Core.dpm(c).setAlwaysOnVpnPackage(Core.admin(c), null, false);

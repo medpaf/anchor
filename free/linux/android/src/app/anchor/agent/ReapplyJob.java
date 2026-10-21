@@ -7,7 +7,6 @@ import android.app.job.JobService;
 import android.content.ComponentName;
 import android.content.Context;
 
-/** Periodically re-applies blocking (catches apps reinstalled mid-shift, and missed alarms). */
 public class ReapplyJob extends JobService {
     private static final int JOB_ID = 1;
 

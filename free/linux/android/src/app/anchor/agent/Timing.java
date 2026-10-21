@@ -12,25 +12,20 @@ import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
-/**
- * Weekly schedule math. Plain Java (no Android classes) so it can be tested on any JDK:
- * see android/test/TimingTest.java.
- */
 final class Timing {
     private Timing() {
     }
 
-    /** A recurring window, e.g. every Mon–Fri 09:00–17:00, or every night 22:30–07:00. */
     static final class Schedule {
         final String id;
         final String name;
         final boolean enabled;
-        /** Days the window starts on, ISO numbers: 1 = Monday … 7 = Sunday. */
+
         final boolean[] days = new boolean[8];
-        /** Minutes after midnight. If end <= start the window runs past midnight (end == start: 24 h). */
+
         final int start;
         final int end;
-        /** The apps this schedule hides. */
+
         final Set<String> packages;
 
         Schedule(String id, String name, boolean enabled, int[] isoDays, int start, int end) {
@@ -59,7 +54,6 @@ final class Timing {
         }
     }
 
-    /** One concrete occurrence of a schedule. */
     static final class Window {
         final Schedule schedule;
         final long start;
@@ -85,7 +79,6 @@ final class Timing {
         return String.format("%02d:%02d", minutes / 60, minutes % 60);
     }
 
-    /** Occurrences of enabled schedules that start between yesterday and a week from now. */
     static List<Window> windows(List<Schedule> schedules, long now, ZoneId zone) {
         List<Window> out = new ArrayList<>();
         LocalDate today = Instant.ofEpochMilli(now).atZone(zone).toLocalDate();
@@ -94,8 +87,7 @@ final class Timing {
             DayOfWeek dow = date.getDayOfWeek();
             for (Schedule s : schedules) {
                 if (!s.enabled || !s.days[dow.getValue()]) continue;
-                // Built from wall-clock times, so a daylight-saving change inside the window still
-                // ends it at the time on the clock (22:30–07:00 ends at 07:00).
+
                 LocalDate endDate = s.end > s.start ? date : date.plusDays(1);
                 ZonedDateTime begin = date.atTime(s.start / 60, s.start % 60).atZone(zone);
                 ZonedDateTime finish = endDate.atTime(s.end / 60, s.end % 60).atZone(zone);
@@ -105,10 +97,6 @@ final class Timing {
         return out;
     }
 
-    /**
-     * The window covering {@code now}, extended through any windows that start before it ends
-     * (so back-to-back schedules count as one block). Null when no schedule is active.
-     */
     static Window active(List<Schedule> schedules, long now, ZoneId zone) {
         List<Window> all = windows(schedules, now, zone);
         Window best = null;
@@ -130,7 +118,6 @@ final class Timing {
         return new Window(best.schedule, best.start, end);
     }
 
-    /** The next moment after {@code now} when any schedule starts or ends, or 0 if there's none. */
     static long nextChange(List<Schedule> schedules, long now, ZoneId zone) {
         long next = 0;
         for (Window w : windows(schedules, now, zone)) {

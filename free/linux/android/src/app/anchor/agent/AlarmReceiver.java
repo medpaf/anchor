@@ -4,10 +4,6 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 
-/**
- * Re-applies blocking when a timer or schedule starts or ends (via the alarm Core sets), and after
- * a reboot, a clock or time-zone change, or an update of Anchor itself.
- */
 public class AlarmReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {

@@ -8,12 +8,6 @@ import android.os.Process;
 
 import java.util.Calendar;
 
-/**
- * How long an app was on screen, for the details screens (phone and computer). Read from Android's
- * own usage records on the phone; nothing leaves the phone except through the USB cable.
- *
- * <p>Needs the "usage access" app op, which the computer turns on over USB (Agent.allow_background).
- */
 final class Usage {
     private Usage() {
     }
@@ -24,7 +18,6 @@ final class Usage {
                 c.getPackageName()) == AppOpsManager.MODE_ALLOWED;
     }
 
-    /** Midnight today, or that many days before it. */
     static long midnight(int daysAgo) {
         Calendar cal = Calendar.getInstance();
         cal.set(Calendar.HOUR_OF_DAY, 0);
@@ -35,7 +28,6 @@ final class Usage {
         return cal.getTimeInMillis();
     }
 
-    /** Milliseconds the app was in the foreground between begin and end. */
     static long foreground(Context c, String pkg, long begin, long end) {
         UsageStatsManager usm = (UsageStatsManager) c.getSystemService(Context.USAGE_STATS_SERVICE);
         if (usm == null) return 0;
@@ -55,12 +47,12 @@ final class Usage {
                     total += e.getTimeStamp() - start;
                     start = -1;
                 } else if (!seen) {
-                    total += e.getTimeStamp() - begin;  // it was already open when the period began
+                    total += e.getTimeStamp() - begin;
                 }
             }
             seen = true;
         }
-        if (start >= 0) total += end - start;  // still open now
+        if (start >= 0) total += end - start;
         return Math.max(0, total);
     }
 }
