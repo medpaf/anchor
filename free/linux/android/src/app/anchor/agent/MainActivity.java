@@ -11,8 +11,12 @@ import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.text.Editable;
+import android.text.Spannable;
+import android.text.SpannableString;
 import android.text.TextUtils;
 import android.text.TextWatcher;
+import android.text.style.ForegroundColorSpan;
+import android.text.style.StyleSpan;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
@@ -341,7 +345,12 @@ public class MainActivity extends Activity {
         boolean pro = "pro".equals(Edition.get(this));
         String mlabel = Core.modeLabel(this);
         if (ready && pro && mlabel != null && !mlabel.isEmpty()) {
-            modeBanner.setText("●  " + mlabel + " mode is on · set from your computer");
+            SpannableString banner = new SpannableString("●  " + mlabel + " mode is on · set from your computer");
+            int nameStart = 3;
+            int nameEnd = nameStart + mlabel.length();
+            banner.setSpan(new ForegroundColorSpan(VIOLET), nameStart, nameEnd, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            banner.setSpan(new StyleSpan(Typeface.BOLD), nameStart, nameEnd, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            modeBanner.setText(banner);
             modeBanner.setVisibility(View.VISIBLE);
         } else {
             modeBanner.setVisibility(View.GONE);
