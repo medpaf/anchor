@@ -43,6 +43,7 @@ final class Core {
     private static final String KEY_PAUSED = "paused";
     private static final String KEY_SCHEDULES = "schedules";
     private static final String KEY_TIMERS = "timers";
+    private static final String KEY_TIMED_OUT = "timed_out";
     private static final String KEY_MODE_LABEL = "mode_label";
 
     private static final String[] RESTRICTIONS = {
@@ -320,15 +321,38 @@ final class Core {
     }
 
     static Map<String, Long> timedOutNow(Context c, long now) {
-        Map<String, Long> out = new TreeMap<>();
         Map<String, Integer> timers = timers(c);
-        if (timers.isEmpty()) return out;
+        JSONObject latched;
+        try {
+            latched = new JSONObject(prefs(c).getString(KEY_TIMED_OUT, "{}"));
+        } catch (JSONException e) {
+            latched = new JSONObject();
+        }
+        JSONObject out = new JSONObject();
         long dayStart = Usage.midnight(0);
         long reset = Usage.midnight(-1);
-        for (Map.Entry<String, Integer> e : timers.entrySet()) {
-            if (Usage.foreground(c, e.getKey(), dayStart, now) >= e.getValue() * 60_000L) out.put(e.getKey(), reset);
+        try {
+            for (Iterator<String> it = latched.keys(); it.hasNext(); ) {
+                String p = it.next();
+                long r = latched.getLong(p);
+                if (r > now && timers.containsKey(p)) out.put(p, r);
+            }
+            for (Map.Entry<String, Integer> e : timers.entrySet()) {
+                String p = e.getKey();
+                if (!out.has(p) && Usage.foreground(c, p, dayStart, now) >= e.getValue() * 60_000L) out.put(p, reset);
+            }
+        } catch (JSONException ignored) {
         }
-        return out;
+        if (!out.toString().equals(latched.toString())) prefs(c).edit().putString(KEY_TIMED_OUT, out.toString()).commit();
+        Map<String, Long> map = new TreeMap<>();
+        try {
+            for (Iterator<String> it = out.keys(); it.hasNext(); ) {
+                String p = it.next();
+                map.put(p, out.getLong(p));
+            }
+        } catch (JSONException ignored) {
+        }
+        return map;
     }
 
     static synchronized List<String> apply(Context c) {
