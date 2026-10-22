@@ -6,6 +6,7 @@ import re
 import secrets
 import shutil
 import subprocess
+import time
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -205,11 +206,18 @@ class Agent:
         if payload:
             arg = base64.b64encode(json.dumps(payload).encode()).decode()
             cmd += f" --arg {arg}"
-        out = self.shell(cmd)
-        m = re.search(r"json=(\{.*\})\}\]", out, re.S)
-        if not m:
+        attempt = 0
+        while True:
+            out = self.shell(cmd)
+            m = re.search(r"json=(\{.*\})\}\]", out, re.S)
+            if m:
+                break
             if "Could not find provider" in out or "Unknown authority" in out:
                 raise AdbError("Anchor isn't installed on this phone.")
+            if "DeadObjectException" in out and attempt < 3:
+                attempt += 1
+                time.sleep(0.5 * attempt)
+                continue
             raise AdbError(out.strip() or "No answer from the phone.")
         res = json.loads(m.group(1))
         if not res.get("ok"):
