@@ -14,7 +14,7 @@ from pathlib import Path
 AGENT_PKG = "app.anchor.agent"
 AGENT_ADMIN = f"{AGENT_PKG}/.AdminReceiver"
 AGENT_URI = "content://app.anchor.agent.cmd"
-AGENT_VERSION = 56
+AGENT_VERSION = 57
 EDITION = "free"
 
 class AdbError(Exception):

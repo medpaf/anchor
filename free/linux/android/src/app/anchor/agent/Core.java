@@ -42,6 +42,7 @@ final class Core {
     private static final String KEY_UNTIL = "until";
     private static final String KEY_PAUSED = "paused";
     private static final String KEY_SCHEDULES = "schedules";
+    private static final String KEY_TIMERS = "timers";
     private static final String KEY_MODE_LABEL = "mode_label";
 
     private static final String[] RESTRICTIONS = {
@@ -277,6 +278,59 @@ final class Core {
         return false;
     }
 
+    static JSONObject timersJson(Context c) {
+        try {
+            return new JSONObject(prefs(c).getString(KEY_TIMERS, "{}"));
+        } catch (JSONException e) {
+            return new JSONObject();
+        }
+    }
+
+    static Map<String, Integer> timers(Context c) {
+        Map<String, Integer> out = new TreeMap<>();
+        JSONObject o = timersJson(c);
+        for (Iterator<String> it = o.keys(); it.hasNext(); ) {
+            String p = it.next();
+            int min = o.optInt(p, 0);
+            if (min > 0) out.put(p, min);
+        }
+        return out;
+    }
+
+    static void setTimers(Context c, JSONObject json) throws JSONException {
+        JSONObject clean = new JSONObject();
+        for (Iterator<String> it = json.keys(); it.hasNext(); ) {
+            String p = it.next();
+            int min = json.getInt(p);
+            if (min < 1 || min > 24 * 60) throw new IllegalArgumentException("A timer must be 1 minute to 24 hours");
+            clean.put(p, min);
+        }
+        prefs(c).edit().putString(KEY_TIMERS, clean.toString()).commit();
+    }
+
+    static boolean anyTimer(Context c) {
+        return !timers(c).isEmpty();
+    }
+
+    static Map<String, Long> usageToday(Context c, long now) {
+        Map<String, Long> out = new TreeMap<>();
+        long dayStart = Usage.midnight(0);
+        for (String p : timers(c).keySet()) out.put(p, Usage.foreground(c, p, dayStart, now));
+        return out;
+    }
+
+    static Map<String, Long> timedOutNow(Context c, long now) {
+        Map<String, Long> out = new TreeMap<>();
+        Map<String, Integer> timers = timers(c);
+        if (timers.isEmpty()) return out;
+        long dayStart = Usage.midnight(0);
+        long reset = Usage.midnight(-1);
+        for (Map.Entry<String, Integer> e : timers.entrySet()) {
+            if (Usage.foreground(c, e.getKey(), dayStart, now) >= e.getValue() * 60_000L) out.put(e.getKey(), reset);
+        }
+        return out;
+    }
+
     static synchronized List<String> apply(Context c) {
         DevicePolicyManager dpm = dpm(c);
         ComponentName admin = admin(c);
@@ -351,13 +405,13 @@ final class Core {
         Permissions.record(c, nowBlocked);
         putSet(c, KEY_FAILED, failed);
 
-        lockClock(c, timerUntil(c) > now || anyEnabled(schedules));
+        lockClock(c, timerUntil(c) > now || anyEnabled(schedules) || anyTimer(c));
         scheduleWakeUp(c, now, schedules);
         Set<String> caughtHidden = new TreeSet<>(caught);
         caughtHidden.retainAll(nowBlocked);
         InstallBlocks.applied(c, caughtHidden);
 
-        if (shifted || anyEnabled(schedules)) ReapplyJob.schedule(c);
+        if (shifted || anyEnabled(schedules) || anyTimer(c)) ReapplyJob.schedule(c);
         else ReapplyJob.cancel(c);
         return failed;
     }
@@ -388,6 +442,11 @@ final class Core {
         List<Long> times = new ArrayList<>(paused(c, now).values());
         times.add(timerUntil(c));
         times.add(Timing.nextChange(schedules, now, ZoneId.systemDefault()));
+        if (anyTimer(c)) {
+
+            times.add(Usage.midnight(-1));
+            if (timedOutNow(c, now).size() < timers(c).size()) times.add(now + 60_000L);
+        }
         for (long t : times) {
             if (t > now && (next == 0 || t < next)) next = t;
         }
@@ -409,6 +468,7 @@ final class Core {
 
     static Set<String> wanted(Context c, long now, Set<String> caught) {
         Set<String> candidates = new TreeSet<>(scheduledNow(c, now).keySet());
+        candidates.addAll(timedOutNow(c, now).keySet());
         candidates.addAll(caught);
         if (mode(c, now) != null) candidates.addAll(selected(c));
         candidates.remove(c.getPackageName());

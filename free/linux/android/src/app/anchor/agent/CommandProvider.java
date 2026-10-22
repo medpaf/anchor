@@ -38,7 +38,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 public class CommandProvider extends ContentProvider {
-    static final int VERSION = 56;
+    static final int VERSION = 57;
     private static final int SHELL_UID = 2000;
     private static final int ICON_PX = 96;
 
@@ -141,6 +141,12 @@ public class CommandProvider extends ContentProvider {
                 Core.setSchedules(c, in.getJSONArray("schedules"));
                 Core.apply(c);
                 return status(c, token);
+            case "timers":
+
+                requireAuth(c, token);
+                Core.setTimers(c, in.getJSONObject("timers"));
+                Core.apply(c);
+                return status(c, token);
             case "install_blocks":
 
                 requireAuth(c, token);
@@ -214,6 +220,9 @@ public class CommandProvider extends ContentProvider {
                 .put("scheduled_now", new JSONObject(Core.scheduledNow(c, now)))
                 .put("paused", new JSONObject(Core.paused(c, now)))
                 .put("schedules", Core.schedulesJson(c))
+                .put("timers", Core.timersJson(c))
+                .put("timed_out", new JSONObject(Core.timedOutNow(c, now)))
+                .put("usage_today", new JSONObject(Core.usageToday(c, now)))
                 .put("install_blocks", InstallBlocks.list(c))
                 .put("install_blocks_set", InstallBlocks.isSet(c))
                 .put("install_kept", new JSONArray(InstallBlocks.kept(c)))
