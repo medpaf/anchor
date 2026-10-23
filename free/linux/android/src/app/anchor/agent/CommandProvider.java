@@ -38,7 +38,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 public class CommandProvider extends ContentProvider {
-    static final int VERSION = 58;
+    static final int VERSION = 59;
     private static final int SHELL_UID = 2000;
     private static final int ICON_PX = 96;
 
@@ -296,7 +296,11 @@ public class CommandProvider extends ContentProvider {
             if (!ai.packageName.equals(c.getPackageName())) apps.put(ai.packageName, ai);
         }
 
-        addInstalled(c, pm, apps, Core.selected(c));
+        Set<String> keep = new java.util.TreeSet<>(Core.selected(c));
+        keep.addAll(Core.timers(c).keySet());
+        keep.addAll(Core.blocked(c));
+        keep.removeAll(InstallBlocks.placeholders(c));
+        addInstalled(c, pm, apps, keep);
 
         ZipOutputStream zip = new ZipOutputStream(os);
         JSONArray list = new JSONArray();
