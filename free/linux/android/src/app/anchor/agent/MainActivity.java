@@ -394,6 +394,7 @@ public class MainActivity extends Activity {
             addSection(hidden.isEmpty() ? "Your apps" : "All other apps",
                     "Tap Anchor to hide an app from this phone right away.", "ic_grid", others, true, true);
         }
+        if (pro) addAppTimers();
         if (pro) addSystemSettings();
         filter();
     }
@@ -458,6 +459,42 @@ public class MainActivity extends Activity {
                         "Greys out \"Erase all data\" in the phone's Settings. Only your computer can turn "
                         + "it back off.", resetOn));
 
+        lists.addView(box, fill(dp(14)));
+    }
+
+    private void addAppTimers() {
+        java.util.Map<String, Integer> timers = Core.timers(this);
+        if (timers.isEmpty()) return;
+        long now = System.currentTimeMillis();
+        java.util.Map<String, Long> usage = Core.usageToday(this, now);
+        java.util.Map<String, Long> timedOut = Core.timedOutNow(this, now);
+        PackageManager pm = getPackageManager();
+
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(4), 0, dp(4), 0);
+        box.addView(settingsHead("App timers", true));
+        Runnable info = infoTap("App timers are set from your computer. They reset at midnight.");
+        boolean first = true;
+        for (java.util.Map.Entry<String, Integer> e : timers.entrySet()) {
+            String pkg = e.getKey();
+            long limitMs = e.getValue() * 60_000L;
+            String name;
+            try {
+                name = String.valueOf(pm.getApplicationInfo(pkg, 0).loadLabel(pm));
+            } catch (PackageManager.NameNotFoundException ex) {
+                name = pkg;
+            }
+            String value;
+            if (timedOut.containsKey(pkg)) {
+                value = "Used up";
+            } else {
+                long used = usage.containsKey(pkg) ? usage.get(pkg) : 0;
+                value = screenTime(Math.max(0, limitMs - used)) + " left";
+            }
+            addSettingRow(box, first, name, screenTime(limitMs) + " a day", value, info);
+            first = false;
+        }
         lists.addView(box, fill(dp(14)));
     }
 
