@@ -32,12 +32,31 @@
 
         <activity
             android:name=".MainActivity"
+            android:exported="true" />
+
+        <activity-alias
+            android:name=".StandardLauncher"
+            android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher"
+            android:enabled="true"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".RetroLauncher"
+            android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher_retro"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
 
         <receiver
             android:name=".AdminReceiver"

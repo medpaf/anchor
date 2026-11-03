@@ -55,28 +55,26 @@ public class MainActivity extends Activity {
         RETRO.put(0xFFEEEAF7, 0xFFFFF4E4);
         RETRO.put(0x99EEEAF7, 0xFFFFF4E4);
         RETRO.put(0xFFC4B5FD, 0xFFFFF4E4);
-        RETRO.put(0xFFB39DFF, 0xFFC8574B);
         RETRO.put(0xFF9A93AD, 0xFFFFF4E4);
         RETRO.put(0x0FFFFFFF, 0xCCFFF4E4);
         RETRO.put(0xFFFFFFFF, 0xFF000000);
-        RETRO.put(0xFF6A47B5, 0xFFC8574B);
         RETRO.put(0x14FFFFFF, 0x29FFF4E4);
-        RETRO.put(0x298B5CF6, 0x29C8574B);
-        RETRO.put(0x228B5CF6, 0x22C8574B);
-        RETRO.put(0x668B5CF6, 0x66C8574B);
-        RETRO.put(0x478B5CF6, 0x47C8574B);
-        RETRO.put(0x008B5CF6, 0x00C8574B);
         RETRO.put(0x0DFFFFFF, 0x29FFF4E4);
-        RETRO.put(0x0AFFFFFF, 0x29FFF4E4);
+        RETRO.put(0x0AFFFFFF, 0x00000000);
         RETRO.put(0xFFE6E1F0, 0xFFFFF4E4);
         RETRO.put(0xFF6E6880, 0xFFFFF4E4);
         RETRO.put(0xFFE4DBFF, 0xFFFFF4E4);
-        RETRO.put(0xA6A78BFA, 0xFFC8574B);
-        RETRO.put(0xFF7C3AED, 0xFFC8574B);
+        RETRO.put(0xA6A78BFA, 0xCCFFF4E4);
         RETRO.put(0xFF1A1525, 0xFF000000);
         RETRO.put(0x38FFFFFF, 0x66FFF4E4);
     }
     private static boolean retro;
+    private static boolean systemFont;
+    private static int accent = 0xFFC8574B;
+    private static final String ACCENT_KEY = "accent";
+    private static final String FONT_KEY = "font";
+    private static final String[] ACCENT_NAMES = {"Red", "Orange", "Yellow", "Green", "Blue", "Purple", "Pink", "White"};
+    private static final int[] ACCENTS = {0xFFC8574B, 0xFFD98A52, 0xFFD9BC62, 0xFF67B886, 0xFF6C9FD1, 0xFFA391D1, 0xFFD17BA3, 0xFFEDE7DC};
     private Typeface retroFont;
     private boolean switchingTheme;
 
@@ -87,7 +85,19 @@ public class MainActivity extends Activity {
     }
 
     private void applyTheme() {
-        retro = "retro".equals(getSharedPreferences(UI_PREFS, MODE_PRIVATE).getString(THEME_KEY, "standard"));
+        android.content.SharedPreferences ui = getSharedPreferences(UI_PREFS, MODE_PRIVATE);
+        retro = "retro".equals(ui.getString(THEME_KEY, "standard"));
+        systemFont = "system".equals(ui.getString(FONT_KEY, "retro"));
+        accent = ui.getInt(ACCENT_KEY, 0xFFC8574B);
+        RETRO.put(0xFFB39DFF, accent);
+        RETRO.put(0xFF6A47B5, accent);
+        RETRO.put(0xFF7C3AED, accent);
+        RETRO.put(0x298B5CF6, withAlpha(accent, 0x29));
+        RETRO.put(0x228B5CF6, withAlpha(accent, 0x22));
+        RETRO.put(0x668B5CF6, withAlpha(accent, 0x66));
+        RETRO.put(0x478B5CF6, withAlpha(accent, 0x47));
+        RETRO.put(0x008B5CF6, withAlpha(accent, 0x00));
+        syncLauncherIcon();
         BG = c(0xFF0D0A14);
         CARD = c(0xFF16121F);
         TEXT = c(0xFFEEEAF7);
@@ -101,26 +111,126 @@ public class MainActivity extends Activity {
         }
     }
 
+    private static int withAlpha(int color, int alpha) {
+        return (alpha << 24) | (color & 0xFFFFFF);
+    }
+
+    private static int shade(int color, float hueShift, float valueScale) {
+        float[] hsv = new float[3];
+        android.graphics.Color.colorToHSV(color, hsv);
+        if (hsv[1] < 0.1f) return valueScale < 1f ? 0xFFD6D6D6 : color;
+        hsv[0] = (hsv[0] + hueShift + 360f) % 360f;
+        hsv[2] = Math.min(1f, hsv[2] * valueScale);
+        return android.graphics.Color.HSVToColor(hsv);
+    }
+
+    private GradientDrawable accentGradient() {
+        return new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
+                new int[]{shade(accent, 6f, 1f), accent, shade(accent, 0f, 0.86f)});
+    }
+
+    private int stroke() {
+        return Math.round(1.5f * getResources().getDisplayMetrics().density);
+    }
+
+    private void syncLauncherIcon() {
+        android.content.pm.PackageManager pm = getPackageManager();
+        String[][] aliases = {{".StandardLauncher", retro ? "off" : "on"}, {".RetroLauncher", retro ? "on" : "off"}};
+        for (String[] alias : aliases) {
+            android.content.ComponentName name = new android.content.ComponentName(getPackageName(), getPackageName() + alias[0]);
+            int wanted = "on".equals(alias[1])
+                    ? android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+                    : android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_DISABLED;
+            try {
+                if (pm.getComponentEnabledSetting(name) != wanted) {
+                    pm.setComponentEnabledSetting(name, wanted, android.content.pm.PackageManager.DONT_KILL_APP);
+                }
+            } catch (IllegalArgumentException ignored) {
+            }
+        }
+    }
+
+    private View retroWindow(View content) {
+        content.setOnApplyWindowInsetsListener(null);
+        LinearLayout window = new LinearLayout(this);
+        window.setOrientation(LinearLayout.VERTICAL);
+        GradientDrawable frame = rounded(BG, dp(16));
+        frame.setStroke(stroke(), c(0x0FFFFFFF));
+        window.setBackground(frame);
+        window.setClipToOutline(true);
+        window.setPadding(stroke(), stroke(), stroke(), stroke());
+
+        LinearLayout bar = new LinearLayout(this);
+        bar.setOrientation(LinearLayout.HORIZONTAL);
+        bar.setGravity(Gravity.CENTER_VERTICAL);
+        bar.setPadding(dp(14), 0, dp(4), 0);
+        android.graphics.drawable.LayerDrawable barBackground = new android.graphics.drawable.LayerDrawable(
+                new android.graphics.drawable.Drawable[]{accentGradient(), new android.graphics.drawable.ColorDrawable(0xFF000000)});
+        barBackground.setLayerGravity(1, Gravity.BOTTOM | Gravity.FILL_HORIZONTAL);
+        barBackground.setLayerHeight(1, stroke());
+        bar.setBackground(barBackground);
+        TextView name = text();
+        name.setText("Anchor");
+        name.setTextColor(0xFF000000);
+        name.setTextSize(TypedValue.COMPLEX_UNIT_SP, 19);
+        name.setTypeface(f(Typeface.create("sans-serif", Typeface.BOLD), true));
+        bar.addView(name, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        final ImageView[] menuHolder = new ImageView[1];
+        menuHolder[0] = iconButton("ic_menu", 0xFF000000, false, "Menu", new Runnable() {
+            @Override
+            public void run() {
+                showMenu(menuHolder[0]);
+            }
+        });
+        bar.addView(menuHolder[0], new LinearLayout.LayoutParams(dp(42), dp(42)));
+        window.addView(bar, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(46)));
+        window.addView(content, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
+
+        android.widget.FrameLayout outer = new android.widget.FrameLayout(this);
+        outer.setBackgroundColor(BG);
+        android.widget.FrameLayout.LayoutParams windowLp = new android.widget.FrameLayout.LayoutParams(
+                android.widget.FrameLayout.LayoutParams.MATCH_PARENT, android.widget.FrameLayout.LayoutParams.MATCH_PARENT);
+        windowLp.setMargins(dp(4), dp(4), dp(4), dp(4));
+        outer.addView(window, windowLp);
+        outer.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
+            @Override
+            public android.view.WindowInsets onApplyWindowInsets(View v, android.view.WindowInsets insets) {
+                int top, bottom;
+                if (android.os.Build.VERSION.SDK_INT >= 30) {
+                    android.graphics.Insets bars = insets.getInsets(android.view.WindowInsets.Type.systemBars());
+                    top = bars.top;
+                    bottom = bars.bottom;
+                } else {
+                    top = insets.getSystemWindowInsetTop();
+                    bottom = insets.getSystemWindowInsetBottom();
+                }
+                v.setPadding(0, top, 0, bottom);
+                return insets;
+            }
+        });
+        return outer;
+    }
+
     private Typeface f(Typeface standard, boolean bold) {
-        if (!retro || retroFont == null) return standard;
+        if (!retro || systemFont || retroFont == null) return standard;
         return Typeface.create(retroFont, bold ? Typeface.BOLD : Typeface.NORMAL);
     }
 
     private TextView text() {
         TextView view = new TextView(this);
-        if (retro && retroFont != null) view.setTypeface(retroFont);
+        if (retro && !systemFont && retroFont != null) view.setTypeface(retroFont);
         return view;
     }
 
     private EditText editText() {
         EditText view = new EditText(this);
-        if (retro && retroFont != null) view.setTypeface(retroFont);
+        if (retro && !systemFont && retroFont != null) view.setTypeface(retroFont);
         return view;
     }
 
     private Button button() {
         Button view = new Button(this);
-        if (retro && retroFont != null) view.setTypeface(retroFont);
+        if (retro && !systemFont && retroFont != null) view.setTypeface(retroFont);
         return view;
     }
 
@@ -171,7 +281,7 @@ public class MainActivity extends Activity {
         });
         LinearLayout.LayoutParams menuLp = new LinearLayout.LayoutParams(dp(42), dp(42));
         menuLp.gravity = Gravity.END;
-        root.addView(menu, menuLp);
+        if (!retro) root.addView(menu, menuLp);
 
         ImageView icon = new ImageView(this);
 
@@ -295,8 +405,8 @@ public class MainActivity extends Activity {
                 return insets;
             }
         });
-        screen = scroll;
-        setContentView(scroll);
+        screen = retro ? retroWindow(scroll) : scroll;
+        setContentView(screen);
     }
 
     @Override
@@ -922,36 +1032,57 @@ public class MainActivity extends Activity {
         String[][] themes = {{"standard", "Standard"}, {"retro", "Retro"}};
         for (int i = 0; i < themes.length; i++) {
             final String key = themes[i][0];
-            boolean chosen = retro == key.equals("retro");
-            LinearLayout row = new LinearLayout(this);
-            row.setOrientation(LinearLayout.HORIZONTAL);
-            row.setGravity(Gravity.CENTER_VERTICAL);
-            row.setPadding(dp(14), dp(14), dp(14), dp(14));
-            TextView label = text();
-            label.setText(themes[i][1]);
-            label.setTextColor(TEXT);
-            label.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
-            row.addView(label, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
-            TextView mark = text();
-            mark.setText(chosen ? "●" : "○");
-            mark.setTextColor(chosen ? VIOLET : DIM);
-            mark.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
-            row.addView(mark);
-            row.setOnClickListener(new View.OnClickListener() {
+            choices.addView(choiceRow(themes[i][1], retro == key.equals("retro"), 0, new Runnable() {
                 @Override
-                public void onClick(View v) {
+                public void run() {
                     dialog.dismiss();
-                    getSharedPreferences(UI_PREFS, MODE_PRIVATE).edit().putString(THEME_KEY, key).apply();
-                    if (retro != key.equals("retro")) {
-                        switchingTheme = true;
-                        recreate();
-                    }
+                    if (retro != key.equals("retro")) saveUi(THEME_KEY, key);
                 }
-            });
-            choices.addView(row, new LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+            }));
         }
         box.addView(choices, fill(dp(8)));
+        if (retro) {
+            box.addView(groupTitle("Accent color"), fill(dp(20)));
+            LinearLayout accents = new LinearLayout(this);
+            accents.setOrientation(LinearLayout.VERTICAL);
+            accents.setBackground(cardWithBorder(CARD, c(0x0FFFFFFF), dp(16)));
+            boolean preset = false;
+            for (int i = 0; i < ACCENTS.length; i++) {
+                final int color = ACCENTS[i];
+                if (color == accent) preset = true;
+                accents.addView(choiceRow(ACCENT_NAMES[i], color == accent, color, new Runnable() {
+                    @Override
+                    public void run() {
+                        dialog.dismiss();
+                        if (color != accent) saveAccent(color);
+                    }
+                }));
+            }
+            accents.addView(choiceRow(preset ? "Custom…" : String.format("Custom  #%06X", accent & 0xFFFFFF), !preset, preset ? 0 : accent, new Runnable() {
+                @Override
+                public void run() {
+                    dialog.dismiss();
+                    showCustomAccent();
+                }
+            }));
+            box.addView(accents, fill(dp(8)));
+            box.addView(groupTitle("Font"), fill(dp(20)));
+            LinearLayout fonts = new LinearLayout(this);
+            fonts.setOrientation(LinearLayout.VERTICAL);
+            fonts.setBackground(cardWithBorder(CARD, c(0x0FFFFFFF), dp(16)));
+            String[][] fontChoices = {{"retro", "Ubuntu Mono"}, {"system", "System font"}};
+            for (String[] choice : fontChoices) {
+                final String key = choice[0];
+                fonts.addView(choiceRow(choice[1], systemFont == key.equals("system"), 0, new Runnable() {
+                    @Override
+                    public void run() {
+                        dialog.dismiss();
+                        if (systemFont != key.equals("system")) saveUi(FONT_KEY, key);
+                    }
+                }));
+            }
+            box.addView(fonts, fill(dp(8)));
+        }
         Button back = pillButton("Back", false);
         back.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -960,6 +1091,92 @@ public class MainActivity extends Activity {
             }
         });
         box.addView(back, fill(dp(22)));
+        showDialog(dialog, box);
+    }
+
+    private View choiceRow(String label, boolean chosen, int swatch, final Runnable onPick) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(dp(14), dp(13), dp(14), dp(13));
+        if (swatch != 0) {
+            View chip = new View(this);
+            GradientDrawable swatchShape = rounded(swatch, dp(6));
+            swatchShape.setStroke(stroke(), c(0x0FFFFFFF));
+            chip.setBackground(swatchShape);
+            LinearLayout.LayoutParams chipLp = new LinearLayout.LayoutParams(dp(22), dp(22));
+            chipLp.rightMargin = dp(12);
+            row.addView(chip, chipLp);
+        }
+        TextView name = text();
+        name.setText(label);
+        name.setTextColor(TEXT);
+        name.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        row.addView(name, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        TextView mark = text();
+        mark.setText(chosen ? "●" : "○");
+        mark.setTextColor(chosen ? VIOLET : DIM);
+        mark.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+        row.addView(mark);
+        row.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                onPick.run();
+            }
+        });
+        row.setLayoutParams(new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        return row;
+    }
+
+    private void saveUi(String key, String value) {
+        getSharedPreferences(UI_PREFS, MODE_PRIVATE).edit().putString(key, value).apply();
+        switchingTheme = true;
+        recreate();
+    }
+
+    private void saveAccent(int color) {
+        getSharedPreferences(UI_PREFS, MODE_PRIVATE).edit().putInt(ACCENT_KEY, color).apply();
+        switchingTheme = true;
+        recreate();
+    }
+
+    private void showCustomAccent() {
+        final android.app.Dialog dialog = new android.app.Dialog(this);
+        LinearLayout box = dialogBox();
+        box.addView(dialogHeading("Custom color"), centered(0));
+        box.addView(dialogText("Type a color code, like C8574B."), centered(dp(10)));
+        final EditText code = editText();
+        code.setText(String.format("%06X", accent & 0xFFFFFF));
+        code.setTextColor(TEXT);
+        code.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
+        code.setSingleLine(true);
+        code.setGravity(Gravity.CENTER);
+        code.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(7), new android.text.InputFilter.AllCaps()});
+        code.setBackground(cardWithBorder(CARD, c(0x0FFFFFFF), dp(12)));
+        code.setPadding(dp(12), dp(12), dp(12), dp(12));
+        box.addView(code, fill(dp(16)));
+        Button cancel = pillButton("Cancel", false);
+        cancel.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                dialog.dismiss();
+            }
+        });
+        Button save = pillButton("Save", true);
+        save.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                String typed = code.getText().toString().replace("#", "").trim();
+                if (!typed.matches("[0-9A-F]{6}")) {
+                    Toast.makeText(MainActivity.this, "Use 6 characters from 0-9 and A-F", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                dialog.dismiss();
+                saveAccent(0xFF000000 | Integer.parseInt(typed, 16));
+            }
+        });
+        box.addView(twoButtons(cancel, save), fill(dp(22)));
         showDialog(dialog, box);
     }
 
@@ -1573,6 +1790,14 @@ public class MainActivity extends Activity {
         b.setMinimumHeight(0);
         b.setPadding(dp(16), dp(12), dp(16), dp(12));
         b.setStateListAnimator(null);
+        if (retro) {
+            b.setTextColor(primary ? 0xFF000000 : TEXT);
+            GradientDrawable themed = primary ? accentGradient() : rounded(BG, dp(9));
+            themed.setCornerRadius(dp(9));
+            themed.setStroke(stroke(), primary ? 0xFF000000 : c(0x0FFFFFFF));
+            b.setBackground(themed);
+            return b;
+        }
         GradientDrawable bg;
         if (primary) {
             bg = new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{c(0xFF6A47B5), c(0xFF6A47B5)});
@@ -1734,6 +1959,15 @@ public class MainActivity extends Activity {
 
     private void setPill(String text, int color) {
         pill.setText(text);
+        if (retro) {
+            boolean active = color == VIOLET;
+            pill.setTextColor(active ? 0xFF000000 : TEXT);
+            GradientDrawable themed = active ? accentGradient() : rounded(BG, dp(99));
+            themed.setCornerRadius(dp(99));
+            themed.setStroke(stroke(), active ? 0xFF000000 : c(0x0FFFFFFF));
+            pill.setBackground(themed);
+            return;
+        }
         pill.setTextColor(color);
         pill.setBackground(rounded(color == VIOLET ? c(0x478B5CF6) : c(0x14FFFFFF), dp(99)));
     }
@@ -1766,7 +2000,7 @@ public class MainActivity extends Activity {
 
     private GradientDrawable cardWithBorder(int color, int border, int radius) {
         GradientDrawable g = rounded(color, radius);
-        g.setStroke(Math.max(1, dp(1) / 2), border);
+        g.setStroke(retro ? stroke() : Math.max(1, dp(1) / 2), border);
         return g;
     }
 
