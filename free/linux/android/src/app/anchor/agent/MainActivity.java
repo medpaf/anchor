@@ -39,13 +39,90 @@ import java.util.TreeSet;
 
 public class MainActivity extends Activity {
 
-    private static final int BG = 0xFF0D0A14;
-    private static final int CARD = 0xFF16121F;
-    private static final int TEXT = 0xFFEEEAF7;
-    private static final int DIM = 0x99EEEAF7;
-    private static final int ICON = 0xFFC4B5FD;
-    private static final int VIOLET = 0xFFB39DFF;
-    private static final int GREY = 0xFF9A93AD;
+    private static int BG = 0xFF0D0A14;
+    private static int CARD = 0xFF16121F;
+    private static int TEXT = 0xFFEEEAF7;
+    private static int DIM = 0x99EEEAF7;
+    private static int ICON = 0xFFC4B5FD;
+    private static int VIOLET = 0xFFB39DFF;
+    private static int GREY = 0xFF9A93AD;
+    private static final String UI_PREFS = "anchor_ui";
+    private static final String THEME_KEY = "theme";
+    private static final java.util.Map<Integer, Integer> RETRO = new java.util.HashMap<>();
+    static {
+        RETRO.put(0xFF0D0A14, 0xFF000000);
+        RETRO.put(0xFF16121F, 0xFF000000);
+        RETRO.put(0xFFEEEAF7, 0xFFFFF4E4);
+        RETRO.put(0x99EEEAF7, 0xFFFFF4E4);
+        RETRO.put(0xFFC4B5FD, 0xFFFFF4E4);
+        RETRO.put(0xFFB39DFF, 0xFFC8574B);
+        RETRO.put(0xFF9A93AD, 0xFFFFF4E4);
+        RETRO.put(0x0FFFFFFF, 0xCCFFF4E4);
+        RETRO.put(0xFFFFFFFF, 0xFF000000);
+        RETRO.put(0xFF6A47B5, 0xFFC8574B);
+        RETRO.put(0x14FFFFFF, 0x29FFF4E4);
+        RETRO.put(0x298B5CF6, 0x29C8574B);
+        RETRO.put(0x228B5CF6, 0x22C8574B);
+        RETRO.put(0x668B5CF6, 0x66C8574B);
+        RETRO.put(0x478B5CF6, 0x47C8574B);
+        RETRO.put(0x008B5CF6, 0x00C8574B);
+        RETRO.put(0x0DFFFFFF, 0x29FFF4E4);
+        RETRO.put(0x0AFFFFFF, 0x29FFF4E4);
+        RETRO.put(0xFFE6E1F0, 0xFFFFF4E4);
+        RETRO.put(0xFF6E6880, 0xFFFFF4E4);
+        RETRO.put(0xFFE4DBFF, 0xFFFFF4E4);
+        RETRO.put(0xA6A78BFA, 0xFFC8574B);
+        RETRO.put(0xFF7C3AED, 0xFFC8574B);
+        RETRO.put(0xFF1A1525, 0xFF000000);
+        RETRO.put(0x38FFFFFF, 0x66FFF4E4);
+    }
+    private static boolean retro;
+    private Typeface retroFont;
+    private boolean switchingTheme;
+
+    private static int c(int standard) {
+        if (!retro) return standard;
+        Integer mapped = RETRO.get(standard);
+        return mapped != null ? mapped : standard;
+    }
+
+    private void applyTheme() {
+        retro = "retro".equals(getSharedPreferences(UI_PREFS, MODE_PRIVATE).getString(THEME_KEY, "standard"));
+        BG = c(0xFF0D0A14);
+        CARD = c(0xFF16121F);
+        TEXT = c(0xFFEEEAF7);
+        DIM = c(0x99EEEAF7);
+        ICON = c(0xFFC4B5FD);
+        VIOLET = c(0xFFB39DFF);
+        GREY = c(0xFF9A93AD);
+        if (retro && retroFont == null) {
+            int id = getResources().getIdentifier("retro_mono", "font", getPackageName());
+            if (id != 0) retroFont = getResources().getFont(id);
+        }
+    }
+
+    private Typeface f(Typeface standard, boolean bold) {
+        if (!retro || retroFont == null) return standard;
+        return Typeface.create(retroFont, bold ? Typeface.BOLD : Typeface.NORMAL);
+    }
+
+    private TextView text() {
+        TextView view = new TextView(this);
+        if (retro && retroFont != null) view.setTypeface(retroFont);
+        return view;
+    }
+
+    private EditText editText() {
+        EditText view = new EditText(this);
+        if (retro && retroFont != null) view.setTypeface(retroFont);
+        return view;
+    }
+
+    private Button button() {
+        Button view = new Button(this);
+        if (retro && retroFont != null) view.setTypeface(retroFont);
+        return view;
+    }
 
     private TextView pill;
     private TextView title;
@@ -68,6 +145,8 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        applyTheme();
+        if (savedInstanceState != null) unlocked = savedInstanceState.getBoolean("unlocked", false);
         if (getActionBar() != null) getActionBar().hide();
         getWindow().setStatusBarColor(BG);
         getWindow().setNavigationBarColor(BG);
@@ -96,23 +175,23 @@ public class MainActivity extends Activity {
 
         ImageView icon = new ImageView(this);
 
-        int orb = getResources().getIdentifier("ic_fg", "drawable", getPackageName());
+        int orb = getResources().getIdentifier(retro ? "ic_fg_retro" : "ic_fg", "drawable", getPackageName());
         icon.setImageDrawable(orb != 0 ? getDrawable(orb) : getApplicationInfo().loadIcon(getPackageManager()));
 
-        pill = new TextView(this);
+        pill = text();
         pill.setTextSize(TypedValue.COMPLEX_UNIT_SP, compact ? 11 : 13);
-        pill.setTypeface(Typeface.DEFAULT_BOLD);
+        pill.setTypeface(f(Typeface.DEFAULT_BOLD, true));
         pill.setAllCaps(true);
         pill.setLetterSpacing(0.14f);
         pill.setPadding(dp(14), dp(6), dp(14), dp(6));
 
-        title = new TextView(this);
+        title = text();
         title.setTextSize(TypedValue.COMPLEX_UNIT_SP, compact ? 22 : 32);
-        title.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
+        title.setTypeface(f(Typeface.create("sans-serif", Typeface.BOLD), true));
         title.setTextColor(TEXT);
         title.setLetterSpacing(-0.01f);
 
-        detail = new TextView(this);
+        detail = text();
         detail.setTextSize(TypedValue.COMPLEX_UNIT_SP, compact ? 13 : 16);
         detail.setLineSpacing(0, 1.25f);
         detail.setTextColor(DIM);
@@ -151,15 +230,15 @@ public class MainActivity extends Activity {
             root.addView(detail, dlp);
         }
 
-        modeBanner = new TextView(this);
+        modeBanner = text();
         modeBanner.setTextColor(TEXT);
         modeBanner.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
         modeBanner.setPadding(dp(16), dp(12), dp(16), dp(12));
-        modeBanner.setBackground(cardWithBorder(CARD, 0x0FFFFFFF, dp(14)));
+        modeBanner.setBackground(cardWithBorder(CARD, c(0x0FFFFFFF), dp(14)));
         modeBanner.setVisibility(View.GONE);
         root.addView(modeBanner, fill(dp(16)));
 
-        search = new EditText(this);
+        search = editText();
         search.setHint("Search your apps");
         search.setHintTextColor(GREY);
         search.setTextColor(TEXT);
@@ -186,7 +265,7 @@ public class MainActivity extends Activity {
         box.setOrientation(LinearLayout.HORIZONTAL);
         box.setGravity(Gravity.CENTER_VERTICAL);
         box.setPadding(dp(14), 0, dp(14), 0);
-        box.setBackground(cardWithBorder(CARD, 0x0FFFFFFF, dp(14)));
+        box.setBackground(cardWithBorder(CARD, c(0x0FFFFFFF), dp(14)));
         box.addView(icon("ic_search", GREY), new LinearLayout.LayoutParams(dp(18), dp(18)));
         box.addView(search, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
         root.addView(box, fill(dp(28)));
@@ -236,7 +315,13 @@ public class MainActivity extends Activity {
     @Override
     protected void onStop() {
         super.onStop();
-        if (!prompting) unlocked = false;
+        if (!prompting && !switchingTheme) unlocked = false;
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putBoolean("unlocked", switchingTheme && unlocked);
     }
 
     @Override
@@ -552,19 +637,19 @@ public class MainActivity extends Activity {
         if (onTap != null) {
             row.setClickable(true);
             row.setBackground(new android.graphics.drawable.RippleDrawable(
-                    ColorStateList.valueOf(0x228B5CF6), null, new android.graphics.drawable.ColorDrawable(0xFFFFFFFF)));
+                    ColorStateList.valueOf(c(0x228B5CF6)), null, new android.graphics.drawable.ColorDrawable(c(0xFFFFFFFF))));
             row.setOnClickListener(new View.OnClickListener() {
                 @Override public void onClick(View v) { onTap.run(); }
             });
         }
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
-        TextView l = new TextView(this);
+        TextView l = text();
         l.setText(label);
         l.setTextColor(TEXT);
         l.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
         col.addView(l);
-        TextView s = new TextView(this);
+        TextView s = text();
         s.setText(subtitle);
         s.setTextColor(DIM);
         s.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
@@ -572,11 +657,11 @@ public class MainActivity extends Activity {
         s.setPadding(0, dp(2), 0, 0);
         col.addView(s);
         row.addView(col, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
-        TextView v = new TextView(this);
+        TextView v = text();
         v.setText(value);
         v.setTextColor("Off".equals(value) ? GREY : VIOLET);
         v.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
-        v.setTypeface(Typeface.DEFAULT_BOLD);
+        v.setTypeface(f(Typeface.DEFAULT_BOLD, true));
         LinearLayout.LayoutParams vlp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         vlp.leftMargin = dp(12);
@@ -597,7 +682,7 @@ public class MainActivity extends Activity {
 
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
-        card.setBackground(cardWithBorder(CARD, 0x0FFFFFFF, dp(18)));
+        card.setBackground(cardWithBorder(CARD, c(0x0FFFFFFF), dp(18)));
 
         LinearLayout header = new LinearLayout(this);
         header.setOrientation(LinearLayout.HORIZONTAL);
@@ -608,12 +693,12 @@ public class MainActivity extends Activity {
         LinearLayout text = new LinearLayout(this);
         text.setOrientation(LinearLayout.VERTICAL);
         text.setPadding(dp(14), 0, dp(8), 0);
-        TextView t = new TextView(this);
+        TextView t = text();
         t.setText(name + " (" + rows.size() + ")");
         t.setTextColor(TEXT);
         t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
         text.addView(t);
-        TextView h = new TextView(this);
+        TextView h = text();
         h.setText(hint);
         h.setTextColor(DIM);
         h.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
@@ -659,8 +744,8 @@ public class MainActivity extends Activity {
         row.setPadding(dp(16), dp(10), dp(14), dp(10));
         if (withIcon) {
 
-            row.setBackground(new android.graphics.drawable.RippleDrawable(ColorStateList.valueOf(0x228B5CF6), null,
-                    new android.graphics.drawable.ColorDrawable(0xFFFFFFFF)));
+            row.setBackground(new android.graphics.drawable.RippleDrawable(ColorStateList.valueOf(c(0x228B5CF6)), null,
+                    new android.graphics.drawable.ColorDrawable(c(0xFFFFFFFF))));
             row.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
@@ -676,7 +761,7 @@ public class MainActivity extends Activity {
         }
         LinearLayout text = new LinearLayout(this);
         text.setOrientation(LinearLayout.VERTICAL);
-        TextView label = new TextView(this);
+        TextView label = text();
         label.setText(name);
         label.setTextColor(TEXT);
         label.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
@@ -684,7 +769,7 @@ public class MainActivity extends Activity {
         label.setEllipsize(TextUtils.TruncateAt.END);
         text.addView(label);
         if (!note.isEmpty()) {
-            TextView n = new TextView(this);
+            TextView n = text();
             n.setText(note);
             n.setTextColor(DIM);
             n.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
@@ -713,19 +798,19 @@ public class MainActivity extends Activity {
             }), ib);
         }
         if (anchorButton) {
-            Button anchor = new Button(this);
+            Button anchor = button();
             anchor.setText("Anchor");
             anchor.setAllCaps(false);
-            anchor.setTextColor(0xFFFFFFFF);
+            anchor.setTextColor(c(0xFFFFFFFF));
             anchor.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
-            anchor.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
+            anchor.setTypeface(f(Typeface.create("sans-serif", Typeface.BOLD), true));
             anchor.setMinHeight(0);
             anchor.setMinimumHeight(0);
             anchor.setMinWidth(0);
             anchor.setMinimumWidth(0);
             anchor.setPadding(dp(18), dp(8), dp(18), dp(8));
             GradientDrawable bg = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                    new int[]{0xFF6A47B5, 0xFF6A47B5});
+                    new int[]{c(0xFF6A47B5), c(0xFF6A47B5)});
             bg.setCornerRadius(dp(99));
             anchor.setBackground(bg);
             anchor.setStateListAnimator(null);
@@ -771,15 +856,17 @@ public class MainActivity extends Activity {
     private void showMenu(View anchor) {
         android.widget.PopupMenu popup = new android.widget.PopupMenu(
                 new android.view.ContextThemeWrapper(this, android.R.style.Theme_DeviceDefault), anchor);
-        final int donate = 1, about = 2;
+        final int donate = 1, about = 2, settings = 3;
         final String donateUrl = Edition.donateUrl(this);
         if (donateUrl != null) popup.getMenu().add(0, donate, 0, "Buy me a coffee…");
-        popup.getMenu().add(0, about, 1, "About Anchor");
+        popup.getMenu().add(0, settings, 1, "Settings");
+        popup.getMenu().add(0, about, 2, "About Anchor");
         popup.setOnMenuItemClickListener(new android.widget.PopupMenu.OnMenuItemClickListener() {
             @Override
             public boolean onMenuItemClick(android.view.MenuItem item) {
                 if (item.getItemId() == donate) openLink(donateUrl);
                 if (item.getItemId() == about) showAbout();
+                if (item.getItemId() == settings) showSettings();
                 return true;
             }
         });
@@ -790,7 +877,7 @@ public class MainActivity extends Activity {
         final android.app.Dialog dialog = new android.app.Dialog(this);
         LinearLayout box = dialogBox();
         ImageView logo = new ImageView(this);
-        int orb = getResources().getIdentifier("ic_fg", "drawable", getPackageName());
+        int orb = getResources().getIdentifier(retro ? "ic_fg_retro" : "ic_fg", "drawable", getPackageName());
         if (orb != 0) logo.setImageDrawable(getDrawable(orb));
         box.addView(logo, new LinearLayout.LayoutParams(dp(112), dp(112)));
         box.addView(dialogHeading(Edition.name(this)), centered(dp(4)));
@@ -800,7 +887,7 @@ public class MainActivity extends Activity {
         box.addView(by, fill(dp(20)));
         LinearLayout credits = new LinearLayout(this);
         credits.setOrientation(LinearLayout.VERTICAL);
-        credits.setBackground(cardWithBorder(CARD, 0x0FFFFFFF, dp(16)));
+        credits.setBackground(cardWithBorder(CARD, c(0x0FFFFFFF), dp(16)));
         credits.addView(twoLines("Paulo Medeiros", "", TEXT), new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
         credits.getChildAt(0).setPadding(dp(14), dp(12), dp(14), dp(12));
@@ -821,6 +908,58 @@ public class MainActivity extends Activity {
             }
         });
         box.addView(twoButtons(back, site), fill(dp(22)));
+        showDialog(dialog, box);
+    }
+
+    private void showSettings() {
+        final android.app.Dialog dialog = new android.app.Dialog(this);
+        LinearLayout box = dialogBox();
+        box.addView(dialogHeading("Settings"), centered(0));
+        box.addView(groupTitle("Theme"), fill(dp(20)));
+        LinearLayout choices = new LinearLayout(this);
+        choices.setOrientation(LinearLayout.VERTICAL);
+        choices.setBackground(cardWithBorder(CARD, c(0x0FFFFFFF), dp(16)));
+        String[][] themes = {{"standard", "Standard"}, {"retro", "Retro"}};
+        for (int i = 0; i < themes.length; i++) {
+            final String key = themes[i][0];
+            boolean chosen = retro == key.equals("retro");
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setPadding(dp(14), dp(14), dp(14), dp(14));
+            TextView label = text();
+            label.setText(themes[i][1]);
+            label.setTextColor(TEXT);
+            label.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+            row.addView(label, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+            TextView mark = text();
+            mark.setText(chosen ? "●" : "○");
+            mark.setTextColor(chosen ? VIOLET : DIM);
+            mark.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+            row.addView(mark);
+            row.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    dialog.dismiss();
+                    getSharedPreferences(UI_PREFS, MODE_PRIVATE).edit().putString(THEME_KEY, key).apply();
+                    if (retro != key.equals("retro")) {
+                        switchingTheme = true;
+                        recreate();
+                    }
+                }
+            });
+            choices.addView(row, new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        }
+        box.addView(choices, fill(dp(8)));
+        Button back = pillButton("Back", false);
+        back.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                dialog.dismiss();
+            }
+        });
+        box.addView(back, fill(dp(22)));
         showDialog(dialog, box);
     }
 
@@ -859,7 +998,7 @@ public class MainActivity extends Activity {
         box.addView(groupTitle("About"), fill(dp(20)));
         LinearLayout about = new LinearLayout(this);
         about.setOrientation(LinearLayout.VERTICAL);
-        about.setBackground(cardWithBorder(CARD, 0x0FFFFFFF, dp(16)));
+        about.setBackground(cardWithBorder(CARD, c(0x0FFFFFFF), dp(16)));
         List<String[]> factList = new ArrayList<>();
         factList.add(new String[]{"Status", statusText(pkg)});
         if (info.has("usage_today")) {
@@ -882,7 +1021,7 @@ public class MainActivity extends Activity {
         box.addView(groupTitle("Permissions"), fill(dp(20)));
         final LinearLayout perms = new LinearLayout(this);
         perms.setOrientation(LinearLayout.VERTICAL);
-        final TextView permsNote = new TextView(this);
+        final TextView permsNote = text();
         permsNote.setTextColor(DIM);
         permsNote.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
         permsNote.setLineSpacing(0, 1.2f);
@@ -927,7 +1066,7 @@ public class MainActivity extends Activity {
                 : "Changes apply right away. You can still change them in the phone's Settings.");
         org.json.JSONArray list = info.optJSONArray("permissions");
         if (list == null || list.length() == 0) {
-            perms.setBackground(cardWithBorder(CARD, 0x0FFFFFFF, dp(16)));
+            perms.setBackground(cardWithBorder(CARD, c(0x0FFFFFFF), dp(16)));
             perms.addView(fact("No permissions to manage", name + " doesn't ask for any permissions you grant."));
             return;
         }
@@ -943,7 +1082,7 @@ public class MainActivity extends Activity {
                 return ((String) a[0]).compareToIgnoreCase((String) b[0]);
             }
         });
-        perms.setBackground(cardWithBorder(CARD, 0x0FFFFFFF, dp(16)));
+        perms.setBackground(cardWithBorder(CARD, c(0x0FFFFFFF), dp(16)));
         for (Object[] r : rows) {
             final org.json.JSONObject p = (org.json.JSONObject) r[2];
             final String titleText = (String) r[0];
@@ -999,12 +1138,12 @@ public class MainActivity extends Activity {
         GradientDrawable knob = new GradientDrawable();
         knob.setShape(GradientDrawable.OVAL);
         knob.setSize(dp(20), dp(20));
-        knob.setColor(new ColorStateList(states, new int[]{0xFF6E6880, 0xFFFFFFFF, 0xFFE6E1F0}));
+        knob.setColor(new ColorStateList(states, new int[]{c(0xFF6E6880), c(0xFFFFFFFF), c(0xFFE6E1F0)}));
         android.graphics.drawable.InsetDrawable thumb = new android.graphics.drawable.InsetDrawable(knob, dp(3));
         GradientDrawable track = new GradientDrawable();
         track.setSize(dp(52), dp(26));
         track.setCornerRadius(dp(13));
-        track.setColor(new ColorStateList(states, new int[]{0x14FFFFFF, 0xFF7C3AED, 0x38FFFFFF}));
+        track.setColor(new ColorStateList(states, new int[]{c(0x14FFFFFF), c(0xFF7C3AED), c(0x38FFFFFF)}));
         sw.setThumbDrawable(thumb);
         sw.setTrackDrawable(track);
         sw.setThumbTintList(null);
@@ -1036,11 +1175,11 @@ public class MainActivity extends Activity {
     private View fact(String name, String value) {
         LinearLayout row = new LinearLayout(this);
         row.setPadding(dp(14), dp(10), dp(14), dp(10));
-        TextView n = new TextView(this);
+        TextView n = text();
         n.setText(name);
         n.setTextColor(DIM);
         n.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
-        TextView v = new TextView(this);
+        TextView v = text();
         v.setText(value);
         v.setTextColor(TEXT);
         v.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
@@ -1056,13 +1195,13 @@ public class MainActivity extends Activity {
     private LinearLayout twoLines(String top, String bottom, int topColor) {
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
-        TextView t = new TextView(this);
+        TextView t = text();
         t.setText(top);
         t.setTextColor(topColor);
         t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
         col.addView(t);
         if (!bottom.isEmpty()) {
-            TextView b = new TextView(this);
+            TextView b = text();
             b.setText(bottom);
             b.setTextColor(DIM);
             b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
@@ -1072,11 +1211,11 @@ public class MainActivity extends Activity {
     }
 
     private TextView groupTitle(String text) {
-        TextView t = new TextView(this);
+        TextView t = text();
         t.setText(text);
         t.setTextColor(TEXT);
         t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
-        t.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
+        t.setTypeface(f(Typeface.create("sans-serif", Typeface.BOLD), true));
         t.setPadding(dp(4), 0, 0, 0);
         return t;
     }
@@ -1091,7 +1230,7 @@ public class MainActivity extends Activity {
         glow.setShape(GradientDrawable.OVAL);
         glow.setGradientType(GradientDrawable.RADIAL_GRADIENT);
         glow.setGradientRadius(dp(42));
-        glow.setColors(new int[]{0x668B5CF6, 0x008B5CF6});
+        glow.setColors(new int[]{c(0x668B5CF6), c(0x008B5CF6)});
         badge.setBackground(glow);
         ImageView icon = new ImageView(this);
         Drawable d = appIcon(pkg);
@@ -1132,7 +1271,7 @@ public class MainActivity extends Activity {
 
         LinearLayout list = new LinearLayout(this);
         list.setOrientation(LinearLayout.VERTICAL);
-        list.setBackground(cardWithBorder(CARD, 0x0FFFFFFF, dp(16)));
+        list.setBackground(cardWithBorder(CARD, c(0x0FFFFFFF), dp(16)));
         for (Timing.Schedule sch : schedulesFor(pkg)) {
             list.addView(listRow("ic_alarm", daysText(sch), hoursText(sch) + (sch.enabled ? "" : " · Off")));
             list.addView(divider());
@@ -1170,11 +1309,11 @@ public class MainActivity extends Activity {
         dayRow.setOrientation(LinearLayout.HORIZONTAL);
         for (int i = 1; i <= 7; i++) {
             final int day = i;
-            final TextView chip = new TextView(this);
+            final TextView chip = text();
             chip.setText(DAY_NAMES[i - 1]);
             chip.setGravity(Gravity.CENTER);
             chip.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
-            chip.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
+            chip.setTypeface(f(Typeface.create("sans-serif", Typeface.BOLD), true));
             chip.setPadding(0, dp(9), 0, dp(9));
             styleDay(chip, true);
             chip.setOnClickListener(new View.OnClickListener() {
@@ -1257,19 +1396,19 @@ public class MainActivity extends Activity {
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
         col.setGravity(Gravity.CENTER_HORIZONTAL);
-        TextView c = new TextView(this);
+        TextView c = text();
         c.setText(caption);
         c.setTextColor(DIM);
         c.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
-        c.setTypeface(Typeface.DEFAULT_BOLD);
+        c.setTypeface(f(Typeface.DEFAULT_BOLD, true));
         col.addView(c);
-        final TextView value = new TextView(this);
+        final TextView value = text();
         value.setText(hhmm(minutes[0]));
         value.setTextColor(TEXT);
         value.setTextSize(TypedValue.COMPLEX_UNIT_SP, 26);
-        value.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
+        value.setTypeface(f(Typeface.create("sans-serif", Typeface.BOLD), true));
         value.setPadding(dp(16), dp(6), dp(16), dp(6));
-        value.setBackground(rounded(0x0DFFFFFF, dp(12)));
+        value.setBackground(rounded(c(0x0DFFFFFF), dp(12)));
         value.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -1288,12 +1427,12 @@ public class MainActivity extends Activity {
 
     private void styleDay(TextView chip, boolean on) {
         GradientDrawable bg = on
-                ? new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{0xFF6A47B5, 0xFF6A47B5})
+                ? new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{c(0xFF6A47B5), c(0xFF6A47B5)})
                 : new GradientDrawable();
-        if (!on) bg.setColor(0x14FFFFFF);
+        if (!on) bg.setColor(c(0x14FFFFFF));
         bg.setCornerRadius(dp(12));
         chip.setBackground(bg);
-        chip.setTextColor(on ? 0xFFFFFFFF : DIM);
+        chip.setTextColor(on ? c(0xFFFFFFFF) : DIM);
     }
 
     private View listRow(String iconName, String titleText, String subtitle) {
@@ -1305,13 +1444,13 @@ public class MainActivity extends Activity {
         LinearLayout text = new LinearLayout(this);
         text.setOrientation(LinearLayout.VERTICAL);
         text.setPadding(dp(14), 0, 0, 0);
-        TextView t = new TextView(this);
+        TextView t = text();
         t.setText(titleText);
         t.setTextColor(TEXT);
         t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
         text.addView(t);
         if (!subtitle.isEmpty()) {
-            TextView st = new TextView(this);
+            TextView st = text();
             st.setText(subtitle);
             st.setTextColor(DIM);
             st.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
@@ -1326,22 +1465,22 @@ public class MainActivity extends Activity {
         box.setOrientation(LinearLayout.VERTICAL);
         box.setGravity(Gravity.CENTER_HORIZONTAL);
         box.setPadding(dp(24), dp(26), dp(24), dp(20));
-        box.setBackground(cardWithBorder(0xFF1A1525, 0x298B5CF6, dp(26)));
+        box.setBackground(cardWithBorder(c(0xFF1A1525), c(0x298B5CF6), dp(26)));
         return box;
     }
 
     private TextView dialogHeading(String text) {
-        TextView heading = new TextView(this);
+        TextView heading = text();
         heading.setText(text);
         heading.setTextColor(TEXT);
         heading.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
-        heading.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
+        heading.setTypeface(f(Typeface.create("sans-serif", Typeface.BOLD), true));
         heading.setGravity(Gravity.CENTER);
         return heading;
     }
 
     private TextView dialogText(String text) {
-        TextView message = new TextView(this);
+        TextView message = text();
         message.setText(text);
         message.setTextColor(DIM);
         message.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
@@ -1410,7 +1549,7 @@ public class MainActivity extends Activity {
         ImageView b = icon(iconName, color);
         b.setPadding(dp(9), dp(9), dp(9), dp(9));
         b.setContentDescription(description);
-        if (accent) b.setBackground(rounded(0x298B5CF6, dp(99)));
+        if (accent) b.setBackground(rounded(c(0x298B5CF6), dp(99)));
         b.setClickable(true);
         if (onClick != null) {
             b.setOnClickListener(new View.OnClickListener() {
@@ -1424,23 +1563,23 @@ public class MainActivity extends Activity {
     }
 
     private Button pillButton(String text, boolean primary) {
-        Button b = new Button(this);
+        Button b = button();
         b.setText(text);
         b.setAllCaps(false);
         b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
-        b.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
-        b.setTextColor(primary ? 0xFFFFFFFF : 0xFFE4DBFF);
+        b.setTypeface(f(Typeface.create("sans-serif", Typeface.BOLD), true));
+        b.setTextColor(primary ? c(0xFFFFFFFF) : c(0xFFE4DBFF));
         b.setMinHeight(0);
         b.setMinimumHeight(0);
         b.setPadding(dp(16), dp(12), dp(16), dp(12));
         b.setStateListAnimator(null);
         GradientDrawable bg;
         if (primary) {
-            bg = new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{0xFF6A47B5, 0xFF6A47B5});
+            bg = new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{c(0xFF6A47B5), c(0xFF6A47B5)});
         } else {
             bg = new GradientDrawable();
-            bg.setColor(0x0AFFFFFF);
-            bg.setStroke(dp(1), 0xA6A78BFA);
+            bg.setColor(c(0x0AFFFFFF));
+            bg.setStroke(dp(1), c(0xA6A78BFA));
         }
         bg.setCornerRadius(dp(99));
         b.setBackground(bg);
@@ -1449,9 +1588,9 @@ public class MainActivity extends Activity {
 
     private Button dangerButton(String text) {
         Button b = pillButton(text, false);
-        b.setTextColor(0xFFFCA5A5);
-        GradientDrawable bg = rounded(0x1FF87171, dp(99));
-        bg.setStroke(dp(1), 0x99F87171);
+        b.setTextColor(c(0xFFFCA5A5));
+        GradientDrawable bg = rounded(c(0x1FF87171), dp(99));
+        bg.setStroke(dp(1), c(0x99F87171));
         b.setBackground(bg);
         return b;
     }
@@ -1596,7 +1735,7 @@ public class MainActivity extends Activity {
     private void setPill(String text, int color) {
         pill.setText(text);
         pill.setTextColor(color);
-        pill.setBackground(rounded(color == VIOLET ? 0x478B5CF6 : 0x14FFFFFF, dp(99)));
+        pill.setBackground(rounded(color == VIOLET ? c(0x478B5CF6) : c(0x14FFFFFF), dp(99)));
     }
 
     private ImageView icon(String name, int color) {
@@ -1613,7 +1752,7 @@ public class MainActivity extends Activity {
 
     private View divider() {
         View d = new View(this);
-        d.setBackgroundColor(0x0DFFFFFF);
+        d.setBackgroundColor(c(0x0DFFFFFF));
         d.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, Math.max(1, dp(1) / 2)));
         return d;
     }
